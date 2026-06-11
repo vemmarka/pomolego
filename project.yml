@@ -1,0 +1,61 @@
+name: Pomolego
+options:
+  bundleIdPrefix: com.vemmarka
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  Pomolego:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/Pomolego
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vemmarka.pomolego
+        PRODUCT_NAME: Pomolego
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_LSUIElement: true
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: false
+        COMBINE_HIDPI_IMAGES: true
+
+  PomolegoTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      # Standalone test bundle: compiles the pure-logic sources directly so
+      # tests never need to launch the menu-bar app as a host.
+      - Tests/PomolegoTests
+      - Sources/Pomolego/Core/TimerEngine.swift
+      - Sources/Pomolego/Models/World.swift
+      - Sources/Pomolego/Models/Session.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vemmarka.pomolego.tests
+        GENERATE_INFOPLIST_FILE: true
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+
+schemes:
+  Pomolego:
+    build:
+      targets:
+        Pomolego: all
+        PomolegoTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PomolegoTests
