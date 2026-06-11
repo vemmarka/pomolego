@@ -29,6 +29,7 @@ struct StatisticsView: View {
             .padding(20)
         }
         .frame(minWidth: 480, minHeight: 480)
+        .tint(Color.appAccent)
     }
 
     // MARK: - Sections
@@ -58,7 +59,7 @@ struct StatisticsView: View {
             BarMark(
                 x: .value("Day", entry.day, unit: .day),
                 y: .value("Minutes", entry.focusMinutes))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.appAccent)
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .day, count: 2)) {
@@ -153,9 +154,9 @@ struct StatisticsView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.vertical, 12)
+        .background(.quaternary.opacity(0.5),
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

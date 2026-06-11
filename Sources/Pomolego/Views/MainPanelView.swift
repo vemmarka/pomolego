@@ -11,35 +11,35 @@ struct MainPanelView: View {
     var openSettings: () -> Void = {}
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             header
             WorldView()
             if let unlocked = state.unlockAnnouncement {
                 unlockBanner(unlocked)
             }
+            Divider()
             phaseControls
         }
-        .padding(12)
-        .frame(width: 400)
+        .padding(16)
+        .frame(width: 392)
+        .tint(Color.appAccent)
     }
 
     // MARK: - Header
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 14) {
             Text("Pomolego")
                 .font(.headline)
             Spacer()
             Button(action: openStatistics) {
                 Image(systemName: "chart.bar.xaxis")
             }
-            .buttonStyle(.borderless)
             .help("Statistics")
             .accessibilityLabel("Statistics")
             Button(action: openSettings) {
                 Image(systemName: "gearshape")
             }
-            .buttonStyle(.borderless)
             .help("Settings")
             .accessibilityLabel("Settings")
             Button {
@@ -47,30 +47,35 @@ struct MainPanelView: View {
             } label: {
                 Image(systemName: "power")
             }
-            .buttonStyle(.borderless)
             .help("Quit Pomolego")
             .accessibilityLabel("Quit")
         }
+        .buttonStyle(.borderless)
+        .foregroundStyle(.secondary)
     }
 
     private func unlockBanner(_ design: BlockDesign) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(Color.appAccent)
             BlockSwatch(design: design)
-                .frame(width: 28, height: 22)
-            Text("New design unlocked: \(design.name)!")
-                .font(.callout.bold())
+                .frame(width: 26, height: 20)
+            Text("New design unlocked: **\(design.name)**")
+                .font(.callout)
             Spacer()
             Button {
                 state.unlockAnnouncement = nil
             } label: {
                 Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.tertiary)
             }
             .buttonStyle(.borderless)
             .accessibilityLabel("Dismiss unlock notice")
         }
-        .padding(8)
-        .background(Color.accentColor.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.quaternary.opacity(0.5),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     // MARK: - Phase-dependent controls
@@ -90,31 +95,24 @@ struct MainPanelView: View {
     }
 
     private var idleControls: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             DesignPickerView()
 
             HStack(spacing: 6) {
                 ForEach([15, 25, 45, 60], id: \.self) { preset in
-                    Button("\(preset)") { state.focusMinutes = preset }
-                        .buttonStyle(.bordered)
-                        .tint(state.focusMinutes == preset ? .accentColor : nil)
-                        .accessibilityLabel("\(preset) minutes")
+                    presetPill(preset)
                 }
-                Stepper(value: $state.focusMinutes, in: 1...180) {
-                    TextField("min", text: $customMinutesText)
-                        .frame(width: 36)
-                        .multilineTextAlignment(.trailing)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit {
-                            if let minutes = Int(customMinutesText) {
-                                state.focusMinutes = min(180, max(1, minutes))
-                            }
-                            customMinutesText = "\(state.focusMinutes)"
-                        }
-                }
-                .accessibilityLabel("Focus duration, \(state.focusMinutes) minutes")
+                Spacer()
+                TextField("min", text: $customMinutesText)
+                    .frame(width: 34)
+                    .multilineTextAlignment(.trailing)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { applyCustomMinutes() }
+                Stepper("", value: $state.focusMinutes, in: 1...180)
+                    .labelsHidden()
+                    .accessibilityLabel("Focus duration, \(state.focusMinutes) minutes")
                 Text("min")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             .onAppear { customMinutesText = "\(state.focusMinutes)" }
@@ -123,15 +121,18 @@ struct MainPanelView: View {
             }
 
             Text(state.targetCell != nil
-                 ? "Building on the marked spot — tap the world to move it"
-                 : "Tap a highlighted cell to choose where your block goes")
+                 ? "Building on the marked spot — click the world to move it"
+                 : "Click a highlighted cell to choose where your block goes")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
 
             Button {
+                applyCustomMinutes()
                 state.startFocus()
             } label: {
-                Label("Start \(state.focusMinutes) min focus", systemImage: "play.fill")
+                Label("Start \(state.focusMinutes)-Minute Focus", systemImage: "play.fill")
                     .frame(maxWidth: .infinity)
             }
             .controlSize(.large)
@@ -140,25 +141,49 @@ struct MainPanelView: View {
         }
     }
 
+    private func presetPill(_ minutes: Int) -> some View {
+        let selected = state.focusMinutes == minutes
+        return Button {
+            state.focusMinutes = minutes
+        } label: {
+            Text("\(minutes)")
+                .font(.subheadline.weight(selected ? .semibold : .regular))
+                .padding(.horizontal, 11)
+                .padding(.vertical, 4)
+                .background(selected
+                            ? AnyShapeStyle(Color.appAccent.opacity(0.18))
+                            : AnyShapeStyle(.quaternary.opacity(0.5)),
+                            in: Capsule())
+                .foregroundStyle(selected ? Color.appAccent : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(minutes) minutes")
+    }
+
+    private func applyCustomMinutes() {
+        if let minutes = Int(customMinutesText) {
+            state.focusMinutes = min(180, max(1, minutes))
+        }
+        customMinutesText = "\(state.focusMinutes)"
+    }
+
     private var focusControls: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                BlockSwatch(design: state.currentDesign)
-                    .frame(width: 28, height: 22)
-                Text(state.remaining.countdownString)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .accessibilityLabel("Time remaining \(state.remaining.countdownString)")
-                if case .focusPaused = state.phase {
-                    Text("paused")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        VStack(spacing: 12) {
+            VStack(spacing: 2) {
+                HStack(spacing: 10) {
+                    BlockSwatch(design: state.currentDesign)
+                        .frame(width: 28, height: 22)
+                    Text(state.remaining.countdownString)
+                        .font(.system(size: 34, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
+                        .accessibilityLabel("Time remaining \(state.remaining.countdownString)")
                 }
+                Text(focusSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            Text("Building a \(state.currentDesign.name) block — tap the world to move the spot")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack {
+            HStack(spacing: 8) {
                 if case .focusPaused = state.phase {
                     Button {
                         state.resume()
@@ -174,6 +199,7 @@ struct MainPanelView: View {
                         Label("Pause", systemImage: "pause.fill")
                             .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
                 }
                 Button(role: .destructive) {
                     showAbandonConfirmation = true
@@ -181,15 +207,16 @@ struct MainPanelView: View {
                     Label("Abandon", systemImage: "xmark")
                         .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
             }
             .controlSize(.large)
         }
         .confirmationDialog("Abandon this session?",
                             isPresented: $showAbandonConfirmation) {
-            Button("Abandon session", role: .destructive) {
+            Button("Abandon Session", role: .destructive) {
                 state.abandonFocus()
             }
-            Button("Keep focusing", role: .cancel) {}
+            Button("Keep Focusing", role: .cancel) {}
         } message: {
             Text(AppSettings.crackedBlockOnAbandon
                  ? "A cracked gray block will be placed where your block would have gone."
@@ -197,51 +224,62 @@ struct MainPanelView: View {
         }
     }
 
+    private var focusSubtitle: String {
+        if case .focusPaused = state.phase {
+            return "Paused — \(state.currentDesign.name) block in progress"
+        }
+        return "Building a \(state.currentDesign.name) block"
+    }
+
     private func breakPrompt(_ kind: BreakKind) -> some View {
         let minutes = kind == .long ? AppSettings.longBreakMinutes : AppSettings.shortBreakMinutes
-        return VStack(spacing: 10) {
-            Text(kind == .long ? "Time for a long break" : "Block built! Take a short break?")
-                .font(.title3.bold())
-            Text("\(minutes) minutes")
-                .foregroundStyle(.secondary)
-            HStack {
+        return VStack(spacing: 12) {
+            VStack(spacing: 2) {
+                Text(kind == .long ? "Time for a Long Break" : "Block Built!")
+                    .font(.title3.weight(.semibold))
+                Text(kind == .long
+                     ? "\(minutes) minutes — you've earned it"
+                     : "Take a \(minutes)-minute break?")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 8) {
                 Button {
                     state.startBreak()
                 } label: {
-                    Label("Start break", systemImage: "cup.and.saucer.fill")
+                    Label("Start Break", systemImage: "cup.and.saucer.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 Button {
                     state.skipBreak()
                 } label: {
-                    Text("Skip break")
+                    Text("Skip")
                         .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
             }
             .controlSize(.large)
         }
     }
 
     private func breakControls(_ kind: BreakKind) -> some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "cup.and.saucer.fill")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                Text(state.remaining.countdownString)
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                if case .breakPaused = state.phase {
-                    Text("paused")
-                        .font(.caption)
+        VStack(spacing: 12) {
+            VStack(spacing: 2) {
+                HStack(spacing: 10) {
+                    Image(systemName: "cup.and.saucer.fill")
+                        .font(.title3)
                         .foregroundStyle(.secondary)
+                    Text(state.remaining.countdownString)
+                        .font(.system(size: 34, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText(countsDown: true))
                 }
+                Text(breakSubtitle(kind))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            Text(kind == .long ? "Long break" : "Short break")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack {
+            HStack(spacing: 8) {
                 if case .breakPaused = state.phase {
                     Button {
                         state.resume()
@@ -257,15 +295,23 @@ struct MainPanelView: View {
                         Label("Pause", systemImage: "pause.fill")
                             .frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
                 }
                 Button {
                     state.endBreakEarly()
                 } label: {
-                    Text("End break")
+                    Text("End Break")
                         .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
             }
             .controlSize(.large)
         }
+    }
+
+    private func breakSubtitle(_ kind: BreakKind) -> String {
+        let name = kind == .long ? "Long break" : "Short break"
+        if case .breakPaused = state.phase { return "\(name) — paused" }
+        return name
     }
 }

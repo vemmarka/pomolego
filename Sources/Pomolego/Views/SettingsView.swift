@@ -12,6 +12,7 @@ struct SettingsView: View {
                 .tabItem { Label("Danger Zone", systemImage: "exclamationmark.triangle") }
         }
         .frame(width: 420)
+        .tint(Color.appAccent)
     }
 }
 

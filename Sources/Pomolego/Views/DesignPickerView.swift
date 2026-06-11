@@ -34,9 +34,10 @@ struct DesignPickerView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .padding(2)
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(selected ? Color.accentColor : .clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(selected ? Color.appAccent : .clear, lineWidth: 2)
             )
             Text(design.name)
                 .font(.caption2)

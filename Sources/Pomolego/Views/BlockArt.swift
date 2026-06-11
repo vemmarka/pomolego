@@ -9,21 +9,27 @@ enum BlockArt {
         let design = BlockDesign.design(for: isCracked ? BlockDesign.cracked.id : designID)
         let base = design.baseColor
         let accent = design.accentColor
+        let shape = Path(roundedRect: rect, cornerRadius: 2.5)
 
-        context.fill(Path(rect), with: .color(base))
+        // Detail patterns are clipped to the rounded block shape so nothing
+        // pokes past the corners (garden bushes intentionally rise above the
+        // top edge and are drawn unclipped at the end).
+        var inner = context
+        inner.clip(to: shape)
+        inner.fill(shape, with: .color(base))
 
         switch design.id {
-        case "brick": drawBrick(context, rect, accent: accent)
-        case "glass": drawGlass(context, rect, accent: accent)
-        case "wood": drawWood(context, rect, accent: accent)
-        case "garden": drawGarden(context, rect, accent: accent)
-        case "stone": drawStone(context, rect, accent: accent)
-        case "neon": drawNeon(context, rect, accent: accent)
-        case "greenhouse": drawGreenhouse(context, rect, accent: accent)
-        case "marble": drawMarble(context, rect, accent: accent)
-        case "gold": drawGold(context, rect, accent: accent)
-        case "observatory": drawObservatory(context, rect, accent: accent)
-        case "cracked": drawCracked(context, rect, accent: accent)
+        case "brick": drawBrick(inner, rect, accent: accent)
+        case "glass": drawGlass(inner, rect, accent: accent)
+        case "wood": drawWood(inner, rect, accent: accent)
+        case "garden": drawGarden(inner, rect, accent: accent)
+        case "stone": drawStone(inner, rect, accent: accent)
+        case "neon": drawNeon(inner, rect, accent: accent)
+        case "greenhouse": drawGreenhouse(inner, rect, accent: accent)
+        case "marble": drawMarble(inner, rect, accent: accent)
+        case "gold": drawGold(inner, rect, accent: accent)
+        case "observatory": drawObservatory(inner, rect, accent: accent)
+        case "cracked": drawCracked(inner, rect, accent: accent)
         default: break
         }
 
@@ -32,13 +38,16 @@ enum BlockArt {
             var top = Path()
             top.move(to: CGPoint(x: rect.minX, y: rect.minY + 0.5))
             top.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + 0.5))
-            context.stroke(top, with: .color(.white.opacity(0.35)), lineWidth: 1)
+            inner.stroke(top, with: .color(.white.opacity(0.30)), lineWidth: 1)
             var bottom = Path()
             bottom.move(to: CGPoint(x: rect.minX, y: rect.maxY - 0.5))
             bottom.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - 0.5))
-            context.stroke(bottom, with: .color(.black.opacity(0.25)), lineWidth: 1)
+            inner.stroke(bottom, with: .color(.black.opacity(0.18)), lineWidth: 1)
         }
-        context.stroke(Path(rect), with: .color(.black.opacity(0.18)), lineWidth: 0.5)
+        if design.id == "garden" {
+            drawGardenBushes(context, rect, accent: accent)
+        }
+        context.stroke(shape, with: .color(.black.opacity(0.10)), lineWidth: 0.5)
     }
 
     // MARK: - Per-design patterns
@@ -95,9 +104,9 @@ enum BlockArt {
         ctx.fill(Path(ellipseIn: k2), with: .color(accent.opacity(0.8)))
     }
 
-    private static func drawGarden(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
-        // Bushes poking over the top edge.
-        let bushColor = accent
+    /// Bushes poking over the top edge — drawn unclipped so they rise above
+    /// the block.
+    private static func drawGardenBushes(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
         let radii: [CGFloat] = [0.18, 0.24, 0.16]
         let centers: [CGFloat] = [0.22, 0.52, 0.80]
         for (cx, radius) in zip(centers, radii) {
@@ -105,8 +114,12 @@ enum BlockArt {
             let bush = CGRect(x: r.minX + r.width * cx - rad,
                               y: r.minY - rad * 0.9,
                               width: rad * 2, height: rad * 2)
-            ctx.fill(Path(ellipseIn: bush), with: .color(bushColor))
+            ctx.fill(Path(ellipseIn: bush), with: .color(accent))
         }
+    }
+
+    private static func drawGarden(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        let centers: [CGFloat] = [0.22, 0.52, 0.80]
         // Stems and a lighter meadow band at the bottom.
         let band = CGRect(x: r.minX, y: r.maxY - r.height * 0.25,
                           width: r.width, height: r.height * 0.25)

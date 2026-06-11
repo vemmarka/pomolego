@@ -25,8 +25,16 @@ struct WorldView: View {
                 .frame(width: contentWidth, height: contentHeight)
         }
         .frame(height: contentHeight + 12)
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(
+            LinearGradient(colors: [Color.primary.opacity(0.035), Color.primary.opacity(0.01)],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .background(.quaternary.opacity(0.25))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(.separator, lineWidth: 1)
+        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
     }
@@ -59,7 +67,7 @@ struct WorldView: View {
         var ground = Path()
         ground.move(to: CGPoint(x: 0, y: size.height - 0.5))
         ground.addLine(to: CGPoint(x: size.width, y: size.height - 0.5))
-        context.stroke(ground, with: .color(.secondary.opacity(0.6)), lineWidth: 1)
+        context.stroke(ground, with: .color(.secondary.opacity(0.35)), lineWidth: 1)
     }
 
     private func drawBlocks(_ context: GraphicsContext) {
@@ -71,9 +79,9 @@ struct WorldView: View {
 
     private func drawValidCells(_ context: GraphicsContext) {
         for cell in state.world.validCells where cell != state.targetCell {
-            let r = rect(for: cell).insetBy(dx: 2, dy: 2)
-            context.stroke(Path(roundedRect: r, cornerRadius: 3),
-                           with: .color(.secondary.opacity(0.30)),
+            let r = rect(for: cell).insetBy(dx: 2.5, dy: 2.5)
+            context.stroke(Path(roundedRect: r, cornerRadius: 3.5),
+                           with: .color(.secondary.opacity(0.18)),
                            style: StrokeStyle(lineWidth: 1))
         }
     }
@@ -86,7 +94,7 @@ struct WorldView: View {
         BlockArt.draw(in: ghost, rect: r.insetBy(dx: 1, dy: 1),
                       designID: state.selectedDesignID)
         context.stroke(Path(roundedRect: r.insetBy(dx: 1, dy: 1), cornerRadius: 3),
-                       with: .color(.accentColor),
+                       with: .color(.appAccent),
                        style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
     }
 
