@@ -74,8 +74,9 @@ validity (gravity rule, stacking, bounds, default targets).
 - **Pausing during a break** is supported, matching focus sessions.
 - "End break" early counts the break as taken (it resets the long-break
   cycle when it was a long break).
-- The menu bar idle icon renders a tiny template-style skyline of your
-  world; with an empty world it falls back to a simple block glyph.
+- The menu bar icon is a LEGO-style brick with studs: template-rendered
+  when idle, tinted in the active design's color during a focus session
+  (a skyline silhouette was tried first but was unreadable at 16 pt).
 - No app sandbox/hardened runtime for the v1 dev build (ad-hoc signed,
   local use).
 

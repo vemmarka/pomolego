@@ -113,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             setTitle("", on: button)
             button.toolTip = "Break time — open Pomolego"
         case .idle:
-            button.image = skylineImage()
+            button.image = brickGlyph()
             setTitle("", on: button)
             button.toolTip = "Pomolego — \(appState.world.builtCount) blocks built"
         }
@@ -137,46 +137,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return image
     }
 
-    /// Small colored block in the in-progress design.
+    /// LEGO-style brick: rounded body with two studs on top. Drawn into
+    /// `rect` so the template idle glyph and the colored focus glyph match.
+    private func drawBrick(in rect: NSRect) {
+        let studHeight: CGFloat = rect.height * 0.28
+        let body = NSRect(x: rect.minX, y: rect.minY,
+                          width: rect.width, height: rect.height - studHeight)
+        NSBezierPath(roundedRect: body, xRadius: 1.5, yRadius: 1.5).fill()
+        let studWidth = rect.width * 0.26
+        let inset = rect.width * 0.16
+        for x in [rect.minX + inset, rect.maxX - inset - studWidth] {
+            let stud = NSRect(x: x, y: body.maxY - 0.5,
+                              width: studWidth, height: studHeight + 0.5)
+            NSBezierPath(roundedRect: stud, xRadius: 1, yRadius: 1).fill()
+        }
+    }
+
+    /// Small brick in the in-progress design's color.
     private func designGlyph(_ design: BlockDesign) -> NSImage {
-        let size = NSSize(width: 14, height: 11)
+        let size = NSSize(width: 15, height: 12)
         let image = NSImage(size: size, flipped: false) { rect in
-            let path = NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5),
-                                    xRadius: 2, yRadius: 2)
             NSColor(design.baseColor).setFill()
-            path.fill()
-            NSColor(design.accentColor).withAlphaComponent(0.9).setStroke()
-            path.lineWidth = 1
-            path.stroke()
+            self.drawBrick(in: rect.insetBy(dx: 0.5, dy: 0.5))
             return true
         }
         image.isTemplate = false
         return image
     }
 
-    /// Template-rendered mini-silhouette of the world's skyline for idle mode,
-    /// so it adapts to the menu bar appearance.
-    private func skylineImage() -> NSImage {
-        let world = appState.world
-        let size = NSSize(width: 18, height: 12)
+    /// Template-rendered brick for idle mode, adapting to the menu bar
+    /// appearance.
+    private func brickGlyph() -> NSImage {
+        let size = NSSize(width: 15, height: 12)
         let image = NSImage(size: size, flipped: false) { rect in
             NSColor.black.setFill()
-            guard !world.blocks.isEmpty else {
-                // Empty world: a single block outline placeholder.
-                let block = NSRect(x: rect.midX - 4, y: 1, width: 8, height: 7)
-                NSBezierPath(roundedRect: block, xRadius: 1.5, yRadius: 1.5).fill()
-                return true
-            }
-            let columnWidth = rect.width / CGFloat(World.columns)
-            let maxHeight = rect.height - 1
-            for col in 0..<World.columns {
-                let height = world.columnHeight(col)
-                guard height > 0 else { continue }
-                let barHeight = min(maxHeight,
-                                    CGFloat(height) / CGFloat(World.rows) * maxHeight * 2)
-                NSRect(x: CGFloat(col) * columnWidth, y: 0,
-                       width: max(columnWidth - 0.4, 0.6), height: barHeight).fill()
-            }
+            self.drawBrick(in: rect.insetBy(dx: 0.5, dy: 0.5))
             return true
         }
         image.isTemplate = true
