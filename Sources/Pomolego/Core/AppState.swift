@@ -7,6 +7,13 @@ enum OverlayEvent {
     case breakOver
 }
 
+/// World editing (delete / move existing blocks) is available while idle.
+enum WorldEditMode: Equatable {
+    case none
+    case selected(GridCell)
+    case moving(GridCell)
+}
+
 /// Central orchestrator: owns the timer engine, world, and session log;
 /// publishes UI state; persists every transition.
 @MainActor
@@ -18,6 +25,7 @@ final class AppState: ObservableObject {
     @Published var selectedDesignID: String
     @Published var targetCell: GridCell?
     @Published var unlockAnnouncement: BlockDesign?
+    @Published private(set) var editMode: WorldEditMode = .none
     @Published var focusMinutes: Int {
         didSet { AppSettings.focusMinutes = focusMinutes }
     }
@@ -137,6 +145,7 @@ final class AppState: ObservableObject {
 
     func startFocus() {
         guard case .idle = engine.phase else { return }
+        editMode = .none
         currentSessionStart = Date()
         engine.startFocus(duration: TimeInterval(focusMinutes * 60))
         if targetCell == nil { targetCell = world.defaultTarget() }
@@ -194,16 +203,68 @@ final class AppState: ObservableObject {
         AppSettings.selectedDesignID = design.id
     }
 
-    /// Tap on the world: set/move the placement target. Allowed while idle
-    /// and while a focus session runs (the in-progress fill moves there).
+    /// Tap on the world. While a focus session runs, taps on valid cells
+    /// move the placement target. While idle, taps also select existing
+    /// blocks for editing (move/delete).
     func handleWorldTap(at cell: GridCell) {
-        guard world.isValidPlacement(cell) else { return }
         switch engine.phase {
-        case .idle, .focusRunning, .focusPaused:
-            targetCell = cell
+        case .focusRunning, .focusPaused:
+            if world.isValidPlacement(cell) { targetCell = cell }
+        case .idle:
+            handleIdleTap(cell)
         default:
             break
         }
+    }
+
+    private func handleIdleTap(_ cell: GridCell) {
+        if case .moving(let source) = editMode {
+            if world.validMoveDestinations(from: source).contains(cell) {
+                worldFile.current.moveBlock(from: source, to: cell)
+                store.saveWorld(worldFile)
+                editMode = .none
+                targetCell = nil
+            } else if world.isOccupied(cell), cell != source {
+                editMode = .selected(cell)
+            } else {
+                editMode = .none
+            }
+            return
+        }
+        if world.isOccupied(cell) {
+            // Tapping the selected block again deselects it.
+            editMode = editMode == .selected(cell) ? .none : .selected(cell)
+        } else if world.isValidPlacement(cell) {
+            editMode = .none
+            targetCell = cell
+        }
+    }
+
+    var selectedBlock: PlacedBlock? {
+        switch editMode {
+        case .selected(let cell), .moving(let cell):
+            return world.block(at: cell)
+        case .none:
+            return nil
+        }
+    }
+
+    func beginMovingSelectedBlock() {
+        if case .selected(let cell) = editMode {
+            editMode = .moving(cell)
+        }
+    }
+
+    func deleteSelectedBlock() {
+        guard case .selected(let cell) = editMode else { return }
+        worldFile.current.removeBlock(at: cell)
+        store.saveWorld(worldFile)
+        editMode = .none
+        targetCell = nil
+    }
+
+    func cancelWorldEdit() {
+        editMode = .none
     }
 
     func startFreshCanvas() {
@@ -212,6 +273,7 @@ final class AppState: ObservableObject {
                                                 blocks: worldFile.current.blocks))
         worldFile.current = World()
         targetCell = nil
+        editMode = .none
         store.saveWorld(worldFile)
     }
 

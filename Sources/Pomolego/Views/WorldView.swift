@@ -43,10 +43,13 @@ struct WorldView: View {
         Canvas { context, size in
             drawGroundAndGrid(context, size: size)
             drawBlocks(context)
-            if canPlace {
+            if case .moving(let source) = state.editMode {
+                drawMoveDestinations(context, from: source)
+            } else if canPlace {
                 drawValidCells(context)
-                drawGhost(context)
+                if state.editMode == .none { drawGhost(context) }
             }
+            drawSelection(context)
             drawInProgress(context)
         }
         .onTapGesture(coordinateSpace: .local) { location in
@@ -96,6 +99,32 @@ struct WorldView: View {
         context.stroke(Path(roundedRect: r.insetBy(dx: 1, dy: 1), cornerRadius: 3),
                        with: .color(.appAccent),
                        style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+    }
+
+    /// Highlight ring on the block being edited; dashed while it's in
+    /// move mode.
+    private func drawSelection(_ context: GraphicsContext) {
+        let cell: GridCell
+        let dashed: Bool
+        switch state.editMode {
+        case .selected(let selected): cell = selected; dashed = false
+        case .moving(let moving): cell = moving; dashed = true
+        case .none: return
+        }
+        let r = rect(for: cell).insetBy(dx: 1, dy: 1)
+        context.stroke(Path(roundedRect: r, cornerRadius: 3.5),
+                       with: .color(.appAccent),
+                       style: StrokeStyle(lineWidth: 2, dash: dashed ? [4, 3] : []))
+    }
+
+    /// Accent-tinted outlines on every cell the moving block may land on.
+    private func drawMoveDestinations(_ context: GraphicsContext, from source: GridCell) {
+        for cell in state.world.validMoveDestinations(from: source) {
+            let r = rect(for: cell).insetBy(dx: 2.5, dy: 2.5)
+            context.stroke(Path(roundedRect: r, cornerRadius: 3.5),
+                           with: .color(.appAccent.opacity(0.55)),
+                           style: StrokeStyle(lineWidth: 1.2))
+        }
     }
 
     /// The target cell fills bottom-to-top proportionally to elapsed time.

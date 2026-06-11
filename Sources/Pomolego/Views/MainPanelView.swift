@@ -94,7 +94,67 @@ struct MainPanelView: View {
         }
     }
 
+    @ViewBuilder
     private var idleControls: some View {
+        if state.editMode != .none {
+            editBar
+        } else {
+            idlePlanningControls
+        }
+    }
+
+    /// Shown while an existing block is selected (move/delete).
+    private var editBar: some View {
+        VStack(spacing: 12) {
+            if case .moving = state.editMode {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+                        .foregroundStyle(Color.appAccent)
+                    Text("Click a highlighted spot to move the block")
+                        .font(.callout)
+                    Spacer()
+                    Button("Cancel") { state.cancelWorldEdit() }
+                        .buttonStyle(.bordered)
+                        .keyboardShortcut(.cancelAction)
+                }
+            } else if let block = state.selectedBlock {
+                HStack(spacing: 10) {
+                    BlockSwatch(design: BlockDesign.design(for: block.designID),
+                                isCracked: block.isCracked)
+                        .frame(width: 28, height: 22)
+                    Text(block.isCracked
+                         ? "Cracked block"
+                         : "\(BlockDesign.design(for: block.designID).name) block")
+                        .font(.callout)
+                    Spacer()
+                    Button {
+                        state.beginMovingSelectedBlock()
+                    } label: {
+                        Label("Move", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
+                    }
+                    .buttonStyle(.bordered)
+                    Button(role: .destructive) {
+                        state.deleteSelectedBlock()
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                    Button {
+                        state.cancelWorldEdit()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.borderless)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityLabel("Deselect block")
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var idlePlanningControls: some View {
         VStack(spacing: 12) {
             DesignPickerView()
 
@@ -121,8 +181,8 @@ struct MainPanelView: View {
             }
 
             Text(state.targetCell != nil
-                 ? "Building on the marked spot — click the world to move it"
-                 : "Click a highlighted cell to choose where your block goes")
+                 ? "Building on the marked spot — click an existing block to edit it"
+                 : "Click a cell to place your block, or a block to move or delete it")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity)

@@ -47,8 +47,11 @@ validity (gravity rule, stacking, bounds, default targets).
   placed (the celebration shows once).
 - **World** — a 28×14 grid; row 0 is the ground. A block may only be placed
   on the ground or directly on top of another block. The world persists
-  forever; blocks are not deletable from the UI. Settings → Danger Zone can
-  archive the world and start a fresh canvas (statistics keep all history).
+  forever. While idle, clicking an existing block selects it for **moving or
+  deleting** (a later change to the original "never deletable" spec rule);
+  removing a block lets the column above fall down so nothing floats.
+  Settings → Danger Zone can archive the world and start a fresh canvas
+  (statistics keep all history).
 - **Designs** — 10 designs unlock as your all-time completed block count
   grows (Brick/Glass/Wood from the start; Observatory at 100). The catalog
   is a single data-driven array (`BlockDesign.catalog`) — adding a design is

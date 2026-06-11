@@ -101,6 +101,45 @@ struct World: Codable, Equatable {
         return true
     }
 
+    /// Removes a block and lets everything above it in the column fall one
+    /// row, so the gravity invariant (contiguous stacks) is preserved.
+    @discardableResult
+    mutating func removeBlock(at cell: GridCell) -> PlacedBlock? {
+        guard let index = blocks.firstIndex(where: { $0.cell == cell }) else { return nil }
+        let removed = blocks.remove(at: index)
+        for i in blocks.indices
+        where blocks[i].col == cell.col && blocks[i].row > cell.row {
+            blocks[i].row -= 1
+        }
+        return removed
+    }
+
+    /// Where the block at `cell` could be moved: every valid cell of the
+    /// world as it would look after the block (and its column compaction)
+    /// is taken out.
+    func validMoveDestinations(from cell: GridCell) -> [GridCell] {
+        guard isOccupied(cell) else { return [] }
+        var without = self
+        without.removeBlock(at: cell)
+        return without.validCells.filter { $0 != cell }
+    }
+
+    /// Moves a block, keeping its identity (design, cracked state, placement
+    /// date). Fails if the destination is not valid after removal.
+    @discardableResult
+    mutating func moveBlock(from: GridCell, to: GridCell) -> Bool {
+        guard from != to, let block = block(at: from) else { return false }
+        var next = self
+        next.removeBlock(at: from)
+        guard next.isValidPlacement(to) else { return false }
+        var moved = block
+        moved.col = to.col
+        moved.row = to.row
+        next.blocks.append(moved)
+        self = next
+        return true
+    }
+
     var builtCount: Int { blocks.filter { !$0.isCracked }.count }
     var crackedCount: Int { blocks.filter(\.isCracked).count }
 }
