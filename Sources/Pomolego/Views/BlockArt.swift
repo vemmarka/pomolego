@@ -24,10 +24,17 @@ enum BlockArt {
         case "wood": drawWood(inner, rect, accent: accent)
         case "garden": drawGarden(inner, rect, accent: accent)
         case "stone": drawStone(inner, rect, accent: accent)
+        case "sandstone": drawSandstone(inner, rect, accent: accent)
+        case "blossom": drawBlossom(inner, rect, accent: accent)
         case "neon": drawNeon(inner, rect, accent: accent)
+        case "coral": drawCoral(inner, rect, accent: accent)
         case "greenhouse": drawGreenhouse(inner, rect, accent: accent)
+        case "bookshelf": drawBookshelf(inner, rect, accent: accent)
         case "marble": drawMarble(inner, rect, accent: accent)
+        case "circuit": drawCircuit(inner, rect, accent: accent)
+        case "lava": drawLava(inner, rect, accent: accent)
         case "gold": drawGold(inner, rect, accent: accent)
+        case "clockwork": drawClockwork(inner, rect, accent: accent)
         case "observatory": drawObservatory(inner, rect, accent: accent)
         case "cracked": drawCracked(inner, rect, accent: accent)
         default: break
@@ -46,6 +53,9 @@ enum BlockArt {
         }
         if design.id == "garden" {
             drawGardenBushes(context, rect, accent: accent)
+        }
+        if design.id == "blossom" {
+            drawBlossomCrowns(context, rect)
         }
         context.stroke(shape, with: .color(.black.opacity(0.10)), lineWidth: 0.5)
     }
@@ -149,6 +159,160 @@ enum BlockArt {
         marks.move(to: CGPoint(x: r.minX + r.width * 0.55, y: r.minY + r.height * 0.70))
         marks.addLine(to: CGPoint(x: r.minX + r.width * 0.62, y: r.minY + r.height * 0.78))
         ctx.stroke(marks, with: .color(accent.opacity(0.6)), lineWidth: 1)
+    }
+
+    private static func drawSandstone(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        var strata = Path()
+        for fraction in [0.3, 0.55, 0.8] {
+            let y = r.minY + r.height * fraction
+            strata.move(to: CGPoint(x: r.minX, y: y))
+            strata.addLine(to: CGPoint(x: r.maxX, y: y + (fraction == 0.55 ? 1 : -1)))
+        }
+        ctx.stroke(strata, with: .color(accent.opacity(0.55)), lineWidth: 1)
+        // Scattered grains.
+        for (gx, gy) in [(0.2, 0.15), (0.65, 0.4), (0.35, 0.68), (0.8, 0.9)] {
+            let grain = CGRect(x: r.minX + r.width * gx, y: r.minY + r.height * gy,
+                               width: 1.4, height: 1.4)
+            ctx.fill(Path(ellipseIn: grain), with: .color(accent.opacity(0.45)))
+        }
+    }
+
+    /// Crowns poking over the top edge — drawn unclipped, like garden bushes.
+    private static func drawBlossomCrowns(_ ctx: GraphicsContext, _ r: CGRect) {
+        let petal = Color(red: 0.98, green: 0.86, blue: 0.90)
+        let radii: [CGFloat] = [0.20, 0.26, 0.18]
+        let centers: [CGFloat] = [0.25, 0.55, 0.82]
+        for (cx, radius) in zip(centers, radii) {
+            let rad = r.width * radius * 0.5
+            let crown = CGRect(x: r.minX + r.width * cx - rad,
+                               y: r.minY - rad * 0.9,
+                               width: rad * 2, height: rad * 2)
+            ctx.fill(Path(ellipseIn: crown), with: .color(petal))
+        }
+    }
+
+    private static func drawBlossom(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        // Branches reaching up toward the crowns.
+        var branches = Path()
+        branches.move(to: CGPoint(x: r.midX, y: r.maxY))
+        branches.addLine(to: CGPoint(x: r.midX, y: r.minY + r.height * 0.30))
+        branches.move(to: CGPoint(x: r.midX, y: r.maxY - r.height * 0.45))
+        branches.addLine(to: CGPoint(x: r.minX + r.width * 0.28, y: r.minY + r.height * 0.30))
+        branches.move(to: CGPoint(x: r.midX, y: r.maxY - r.height * 0.30))
+        branches.addLine(to: CGPoint(x: r.minX + r.width * 0.78, y: r.minY + r.height * 0.25))
+        ctx.stroke(branches, with: .color(accent), lineWidth: 1.2)
+        // Falling petals.
+        for (px, py) in [(0.22, 0.55), (0.68, 0.65), (0.45, 0.82)] {
+            let dot = CGRect(x: r.minX + r.width * px, y: r.minY + r.height * py,
+                             width: 1.6, height: 1.6)
+            ctx.fill(Path(ellipseIn: dot), with: .color(.white.opacity(0.75)))
+        }
+    }
+
+    private static func drawCoral(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        // Branching coral silhouette growing from the bottom.
+        var coral = Path()
+        let baseX = r.minX + r.width * 0.42
+        coral.move(to: CGPoint(x: baseX, y: r.maxY))
+        coral.addLine(to: CGPoint(x: baseX, y: r.minY + r.height * 0.35))
+        coral.move(to: CGPoint(x: baseX, y: r.maxY - r.height * 0.35))
+        coral.addLine(to: CGPoint(x: baseX - r.width * 0.16, y: r.minY + r.height * 0.40))
+        coral.move(to: CGPoint(x: baseX, y: r.maxY - r.height * 0.50))
+        coral.addLine(to: CGPoint(x: baseX + r.width * 0.20, y: r.minY + r.height * 0.28))
+        coral.move(to: CGPoint(x: baseX + r.width * 0.20, y: r.minY + r.height * 0.55))
+        coral.addLine(to: CGPoint(x: baseX + r.width * 0.34, y: r.minY + r.height * 0.42))
+        ctx.stroke(coral, with: .color(accent), lineWidth: 1.4)
+        // Bubbles.
+        for (bx, by) in [(0.82, 0.2), (0.12, 0.3)] {
+            let bubble = CGRect(x: r.minX + r.width * bx, y: r.minY + r.height * by,
+                                width: 2, height: 2)
+            ctx.stroke(Path(ellipseIn: bubble), with: .color(.white.opacity(0.55)),
+                       lineWidth: 0.6)
+        }
+    }
+
+    private static func drawBookshelf(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        let shelfColors: [Color] = [accent,
+                                    Color(red: 0.72, green: 0.30, blue: 0.26),
+                                    Color(red: 0.32, green: 0.46, blue: 0.32),
+                                    Color(red: 0.82, green: 0.66, blue: 0.30)]
+        for shelfFraction in [0.0, 0.5] {
+            let shelfTop = r.minY + r.height * shelfFraction
+            let shelfHeight = r.height * 0.5
+            // Books: leaning row of spines with varied heights.
+            let bookWidth = r.width * 0.13
+            for i in 0..<5 {
+                let x = r.minX + r.width * 0.06 + CGFloat(i) * bookWidth * 1.25
+                let heightVariation = 0.72 + 0.16 * Double((i + Int(shelfFraction * 2)) % 2)
+                let book = CGRect(x: x,
+                                  y: shelfTop + shelfHeight * (1 - heightVariation) - 1,
+                                  width: bookWidth,
+                                  height: shelfHeight * heightVariation)
+                ctx.fill(Path(book), with: .color(shelfColors[i % shelfColors.count].opacity(0.9)))
+            }
+            // Shelf board.
+            let board = CGRect(x: r.minX, y: shelfTop + shelfHeight - 1.4,
+                               width: r.width, height: 1.4)
+            ctx.fill(Path(board), with: .color(.black.opacity(0.30)))
+        }
+    }
+
+    private static func drawCircuit(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        var traces = Path()
+        // Two right-angle traces.
+        traces.move(to: CGPoint(x: r.minX, y: r.minY + r.height * 0.30))
+        traces.addLine(to: CGPoint(x: r.minX + r.width * 0.40, y: r.minY + r.height * 0.30))
+        traces.addLine(to: CGPoint(x: r.minX + r.width * 0.40, y: r.minY + r.height * 0.72))
+        traces.addLine(to: CGPoint(x: r.minX + r.width * 0.78, y: r.minY + r.height * 0.72))
+        traces.move(to: CGPoint(x: r.maxX, y: r.minY + r.height * 0.42))
+        traces.addLine(to: CGPoint(x: r.minX + r.width * 0.62, y: r.minY + r.height * 0.42))
+        traces.addLine(to: CGPoint(x: r.minX + r.width * 0.62, y: r.minY + r.height * 0.18))
+        ctx.stroke(traces, with: .color(accent.opacity(0.85)), lineWidth: 1)
+        // Solder pads at trace ends.
+        for (px, py) in [(0.78, 0.72), (0.62, 0.18)] {
+            let pad = CGRect(x: r.minX + r.width * px - 1.5,
+                             y: r.minY + r.height * py - 1.5,
+                             width: 3, height: 3)
+            ctx.fill(Path(pad), with: .color(accent))
+        }
+    }
+
+    private static func drawLava(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        // Glowing magma veins: wide soft pass under a bright core.
+        var veins = Path()
+        veins.move(to: CGPoint(x: r.minX, y: r.minY + r.height * 0.45))
+        veins.addLine(to: CGPoint(x: r.minX + r.width * 0.30, y: r.minY + r.height * 0.60))
+        veins.addLine(to: CGPoint(x: r.minX + r.width * 0.55, y: r.minY + r.height * 0.38))
+        veins.addLine(to: CGPoint(x: r.maxX, y: r.minY + r.height * 0.52))
+        veins.move(to: CGPoint(x: r.minX + r.width * 0.30, y: r.minY + r.height * 0.60))
+        veins.addLine(to: CGPoint(x: r.minX + r.width * 0.42, y: r.maxY))
+        veins.move(to: CGPoint(x: r.minX + r.width * 0.55, y: r.minY + r.height * 0.38))
+        veins.addLine(to: CGPoint(x: r.minX + r.width * 0.62, y: r.minY))
+        ctx.stroke(veins, with: .color(accent.opacity(0.35)), lineWidth: 3.5)
+        ctx.stroke(veins, with: .color(accent), lineWidth: 1.2)
+    }
+
+    private static func drawClockwork(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        let center = CGPoint(x: r.midX, y: r.midY)
+        let radius = min(r.width, r.height) * 0.30
+        let gear = CGRect(x: center.x - radius, y: center.y - radius,
+                          width: radius * 2, height: radius * 2)
+        ctx.stroke(Path(ellipseIn: gear), with: .color(accent), lineWidth: 1.3)
+        // Teeth.
+        var teeth = Path()
+        for i in 0..<8 {
+            let angle = Double(i) / 8 * 2 * .pi
+            let inner = CGPoint(x: center.x + cos(angle) * radius,
+                                y: center.y + sin(angle) * radius)
+            let outer = CGPoint(x: center.x + cos(angle) * (radius + 2),
+                                y: center.y + sin(angle) * (radius + 2))
+            teeth.move(to: inner)
+            teeth.addLine(to: outer)
+        }
+        ctx.stroke(teeth, with: .color(accent), lineWidth: 1.2)
+        // Hub.
+        let hub = CGRect(x: center.x - 1.5, y: center.y - 1.5, width: 3, height: 3)
+        ctx.fill(Path(ellipseIn: hub), with: .color(accent))
     }
 
     private static func drawNeon(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {

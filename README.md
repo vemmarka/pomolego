@@ -52,10 +52,13 @@ validity (gravity rule, stacking, bounds, default targets).
   removing a block lets the column above fall down so nothing floats.
   Settings → Danger Zone can archive the world and start a fresh canvas
   (statistics keep all history).
-- **Designs** — 10 designs unlock as your all-time completed block count
-  grows (Brick/Glass/Wood from the start; Observatory at 100). The catalog
-  is a single data-driven array (`BlockDesign.catalog`) — adding a design is
-  one entry plus one drawing case.
+- **Designs** — 17 designs unlock as your all-time completed block count
+  grows: Brick/Glass/Wood from the start, then Garden (3), Stone (6),
+  Sandstone (10), Blossom (14), Neon (19), Coral (25), Greenhouse (32),
+  Bookshelf (40), Marble (48), Circuit (57), Lava (67), Gold (78),
+  Clockwork (90), Observatory (105). The catalog is a single data-driven
+  array (`BlockDesign.catalog`) — adding a design is one entry plus one
+  drawing case.
 - **Data** — JSON under `~/Library/Application Support/Pomolego/`
   (`world.json`, `sessions.json`, `running.json`), written atomically.
   All statistics derive from the append-only session log.
