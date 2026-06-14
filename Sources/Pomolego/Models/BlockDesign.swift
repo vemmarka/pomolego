@@ -65,6 +65,9 @@ struct BlockDesign: Identifiable, Equatable {
         BlockDesign(id: "observatory", name: "Observatory", unlockAt: 105,
                     baseColor: Color(red: 0.18, green: 0.20, blue: 0.32),
                     accentColor: Color(red: 0.75, green: 0.80, blue: 0.95)),
+        BlockDesign(id: "moon", name: "Moon", unlockAt: 120,
+                    baseColor: Color(red: 0.10, green: 0.11, blue: 0.18),
+                    accentColor: Color(red: 0.86, green: 0.87, blue: 0.80)),
     ]
 
     /// Fixed style for abandoned sessions. Never appears in the picker and

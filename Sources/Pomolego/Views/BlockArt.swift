@@ -37,6 +37,7 @@ enum BlockArt {
         case "gold": drawGold(inner, rect, accent: accent)
         case "clockwork": drawClockwork(inner, rect, accent: accent)
         case "observatory": drawObservatory(inner, rect, accent: accent)
+        case "moon": drawMoon(inner, rect, accent: accent)
         case "cracked": drawCracked(inner, rect, accent: accent)
         default: break
         }
@@ -415,6 +416,32 @@ enum BlockArt {
             let star = CGRect(x: r.minX + r.width * sx, y: r.minY + r.height * sy,
                               width: 1.5, height: 1.5)
             ctx.fill(Path(ellipseIn: star), with: .color(accent.opacity(0.9)))
+        }
+    }
+
+    private static func drawMoon(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        // Night-sky stars behind the moon.
+        for (sx, sy) in [(0.16, 0.20), (0.84, 0.16), (0.74, 0.78), (0.22, 0.66)] {
+            let star = CGRect(x: r.minX + r.width * sx, y: r.minY + r.height * sy,
+                              width: 1.4, height: 1.4)
+            ctx.fill(Path(ellipseIn: star), with: .color(.white.opacity(0.8)))
+        }
+        // The moon disc, sitting upper-left.
+        let radius = min(r.width, r.height) * 0.34
+        let center = CGPoint(x: r.minX + r.width * 0.42, y: r.minY + r.height * 0.42)
+        let disc = CGRect(x: center.x - radius, y: center.y - radius,
+                          width: radius * 2, height: radius * 2)
+        ctx.fill(Path(ellipseIn: disc), with: .color(accent))
+        // Craters.
+        let craters: [(CGFloat, CGFloat, CGFloat)] = [
+            (-0.10, -0.12, 0.30), (0.22, 0.08, 0.20), (-0.04, 0.28, 0.16),
+        ]
+        for (dx, dy, scale) in craters {
+            let cr = radius * scale
+            let crater = CGRect(x: center.x + radius * dx - cr,
+                                y: center.y + radius * dy - cr,
+                                width: cr * 2, height: cr * 2)
+            ctx.fill(Path(ellipseIn: crater), with: .color(.black.opacity(0.16)))
         }
     }
 
