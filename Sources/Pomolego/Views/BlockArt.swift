@@ -25,6 +25,7 @@ enum BlockArt {
         case "garden": drawGarden(inner, rect, accent: accent)
         case "stone": drawStone(inner, rect, accent: accent)
         case "sandstone": drawSandstone(inner, rect, accent: accent)
+        case "water": drawWater(inner, rect, accent: accent)
         case "blossom": drawBlossom(inner, rect, accent: accent)
         case "neon": drawNeon(inner, rect, accent: accent)
         case "coral": drawCoral(inner, rect, accent: accent)
@@ -174,6 +175,34 @@ enum BlockArt {
             let grain = CGRect(x: r.minX + r.width * gx, y: r.minY + r.height * gy,
                                width: 1.4, height: 1.4)
             ctx.fill(Path(ellipseIn: grain), with: .color(accent.opacity(0.45)))
+        }
+    }
+
+    private static func drawWater(_ ctx: GraphicsContext, _ r: CGRect, accent: Color) {
+        // Stacked wavy ripples, brighter toward the top like a sunlit surface.
+        let rows = 3
+        let rowH = r.height / CGFloat(rows)
+        for row in 0..<rows {
+            let y = r.minY + rowH * CGFloat(row) + rowH * 0.5
+            var wave = Path()
+            wave.move(to: CGPoint(x: r.minX, y: y))
+            let segment = r.width / 2
+            wave.addCurve(
+                to: CGPoint(x: r.minX + segment, y: y),
+                control1: CGPoint(x: r.minX + segment * 0.25, y: y - rowH * 0.30),
+                control2: CGPoint(x: r.minX + segment * 0.75, y: y + rowH * 0.30))
+            wave.addCurve(
+                to: CGPoint(x: r.maxX, y: y),
+                control1: CGPoint(x: r.minX + segment * 1.25, y: y - rowH * 0.30),
+                control2: CGPoint(x: r.minX + segment * 1.75, y: y + rowH * 0.30))
+            let opacity = 0.85 - Double(row) * 0.18
+            ctx.stroke(wave, with: .color(accent.opacity(opacity)), lineWidth: 1.2)
+        }
+        // A couple of bright glints near the surface.
+        for (gx, gy) in [(0.30, 0.18), (0.68, 0.30)] {
+            let glint = CGRect(x: r.minX + r.width * gx, y: r.minY + r.height * gy,
+                               width: 2, height: 1.4)
+            ctx.fill(Path(ellipseIn: glint), with: .color(.white.opacity(0.7)))
         }
     }
 
