@@ -126,6 +126,35 @@ struct World: Codable, Equatable {
 
     var builtCount: Int { blocks.filter { !$0.isCracked }.count }
     var crackedCount: Int { blocks.filter(\.isCracked).count }
+
+    /// Maximal horizontal runs of >= 3 contiguous (no-gap) water blocks in the
+    /// same row. Each becomes a little aquarium with a patrolling fish.
+    var waterRuns: [WaterRun] {
+        var byRow: [Int: [Int]] = [:]
+        for b in blocks where b.designID == "water" && !b.isCracked {
+            byRow[b.row, default: []].append(b.col)
+        }
+        var runs: [WaterRun] = []
+        for (row, unsorted) in byRow {
+            let cols = unsorted.sorted()
+            var start = cols[0]
+            var prev = cols[0]
+            for c in cols.dropFirst() {
+                if c == prev + 1 { prev = c; continue }
+                if prev - start + 1 >= 3 { runs.append(WaterRun(row: row, startCol: start, endCol: prev)) }
+                start = c
+                prev = c
+            }
+            if prev - start + 1 >= 3 { runs.append(WaterRun(row: row, startCol: start, endCol: prev)) }
+        }
+        return runs
+    }
+}
+
+struct WaterRun: Equatable {
+    let row: Int
+    let startCol: Int
+    let endCol: Int
 }
 
 struct ArchivedWorld: Codable, Equatable {

@@ -184,4 +184,51 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(world.builtCount, 1)
         XCTAssertEqual(world.crackedCount, 1)
     }
+
+    // MARK: - Water runs (fish)
+
+    private func placeWater(_ world: inout World, row: Int, cols: [Int]) {
+        for c in cols {
+            world.place(designID: "water", isCracked: false,
+                        at: GridCell(col: c, row: row), date: date)
+        }
+    }
+
+    func testThreeContiguousWaterFormsARun() {
+        var world = makeWorld()
+        placeWater(&world, row: 0, cols: [4, 5, 6])
+        XCTAssertEqual(world.waterRuns, [WaterRun(row: 0, startCol: 4, endCol: 6)])
+    }
+
+    func testTwoWaterIsNotEnough() {
+        var world = makeWorld()
+        placeWater(&world, row: 0, cols: [4, 5])
+        XCTAssertTrue(world.waterRuns.isEmpty)
+    }
+
+    func testGapBreaksTheRun() {
+        var world = makeWorld()
+        placeWater(&world, row: 0, cols: [0, 1, 2, 4, 5]) // gap at col 3
+        XCTAssertEqual(world.waterRuns, [WaterRun(row: 0, startCol: 0, endCol: 2)])
+    }
+
+    func testWaterRunsArestrictlyPerRow() {
+        var world = makeWorld()
+        placeWater(&world, row: 0, cols: [0, 1, 2])
+        placeWater(&world, row: 3, cols: [0, 1, 2])           // floating row, also qualifies
+        placeWater(&world, row: 5, cols: [0, 1])              // too short
+        let runs = world.waterRuns
+        XCTAssertEqual(runs.count, 2)
+        XCTAssertTrue(runs.contains(WaterRun(row: 0, startCol: 0, endCol: 2)))
+        XCTAssertTrue(runs.contains(WaterRun(row: 3, startCol: 0, endCol: 2)))
+    }
+
+    func testNonWaterBlocksDoNotFormRuns() {
+        var world = makeWorld()
+        for c in [4, 5, 6] {
+            world.place(designID: "glass", isCracked: false,
+                        at: GridCell(col: c, row: 0), date: date)
+        }
+        XCTAssertTrue(world.waterRuns.isEmpty)
+    }
 }

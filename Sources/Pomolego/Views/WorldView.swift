@@ -40,17 +40,22 @@ struct WorldView: View {
     }
 
     private var canvas: some View {
-        Canvas { context, size in
-            drawGroundAndGrid(context, size: size)
-            drawBlocks(context)
-            if case .moving(let source) = state.editMode {
-                drawMoveDestinations(context, from: source)
-            } else if canPlace {
-                drawValidCells(context)
-                if state.editMode == .none { drawGhost(context) }
+        // TimelineView drives the continuous fish animation; the rest of the
+        // scene is redrawn each frame too (cheap for this small grid).
+        TimelineView(.animation) { timeline in
+            Canvas { context, size in
+                drawGroundAndGrid(context, size: size)
+                drawBlocks(context)
+                if case .moving(let source) = state.editMode {
+                    drawMoveDestinations(context, from: source)
+                } else if canPlace {
+                    drawValidCells(context)
+                    if state.editMode == .none { drawGhost(context) }
+                }
+                drawSelection(context)
+                drawInProgress(context)
+                drawFish(context, date: timeline.date)
             }
-            drawSelection(context)
-            drawInProgress(context)
         }
         .onTapGesture(coordinateSpace: .local) { location in
             let col = Int(location.x / Self.cellWidth)
@@ -58,6 +63,42 @@ struct WorldView: View {
             let row = World.rows - 1 - rowFromTop
             state.handleWorldTap(at: GridCell(col: col, row: row))
         }
+    }
+
+    /// A fish patrols each run of >= 3 contiguous water blocks, gliding end to
+    /// end and back (sine motion, slowing at each turn).
+    private func drawFish(_ context: GraphicsContext, date: Date) {
+        let t = date.timeIntervalSinceReferenceDate
+        for (i, run) in state.world.waterRuns.enumerated() {
+            let cy = CGFloat(World.rows - 1 - run.row) * Self.cellHeight + Self.cellHeight / 2
+            let margin: CGFloat = 7
+            let minX = CGFloat(run.startCol) * Self.cellWidth + margin
+            let maxX = CGFloat(run.endCol + 1) * Self.cellWidth - margin
+            let mid = (minX + maxX) / 2
+            let amp = (maxX - minX) / 2
+            let period = max(3.0, Double(run.endCol - run.startCol + 1) * 1.4)
+            let omega = 2 * Double.pi / period
+            let phase = Double(run.row) * 0.7 + Double(run.startCol) * 0.5 + Double(i)
+            let angle = t * omega + phase
+            let x = mid + amp * CGFloat(sin(angle))
+            drawFishShape(context, at: CGPoint(x: x, y: cy), facingRight: cos(angle) > 0)
+        }
+    }
+
+    private func drawFishShape(_ context: GraphicsContext, at p: CGPoint, facingRight: Bool) {
+        var ctx = context
+        ctx.translateBy(x: p.x, y: p.y)
+        if !facingRight { ctx.scaleBy(x: -1, y: 1) }
+        let fish = Color(red: 1.0, green: 0.54, blue: 0.24)
+        ctx.fill(Path(ellipseIn: CGRect(x: -6, y: -3.6, width: 12, height: 7.2)), with: .color(fish))
+        var tail = Path()
+        tail.move(to: CGPoint(x: -5, y: 0))
+        tail.addLine(to: CGPoint(x: -9.5, y: -3.4))
+        tail.addLine(to: CGPoint(x: -9.5, y: 3.4))
+        tail.closeSubpath()
+        ctx.fill(tail, with: .color(fish))
+        ctx.fill(Path(ellipseIn: CGRect(x: 1.8, y: -1.4, width: 1.7, height: 1.7)),
+                 with: .color(.black.opacity(0.8)))
     }
 
     private func rect(for cell: GridCell) -> CGRect {

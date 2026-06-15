@@ -116,6 +116,32 @@ export function cloneWorld(world) {
   return { blocks: world.blocks.map((b) => ({ ...b })) };
 }
 
+// Maximal horizontal runs of >= minLength contiguous (no-gap) water blocks in
+// the same row. Each run is { row, startCol, endCol }. Drives the swimming
+// fish: a long-enough stretch of water becomes a little aquarium.
+export function waterRuns(world, minLength = 3) {
+  const byRow = new Map();
+  for (const b of world.blocks) {
+    if (b.designID !== 'water' || b.isCracked) continue;
+    if (!byRow.has(b.row)) byRow.set(b.row, []);
+    byRow.get(b.row).push(b.col);
+  }
+  const runs = [];
+  for (const [row, cols] of byRow) {
+    cols.sort((a, b) => a - b);
+    let start = cols[0];
+    let prev = cols[0];
+    for (let i = 1; i <= cols.length; i++) {
+      const c = cols[i];
+      if (c === prev + 1) { prev = c; continue; }
+      if (prev - start + 1 >= minLength) runs.push({ row, startCol: start, endCol: prev });
+      start = c;
+      prev = c;
+    }
+  }
+  return runs;
+}
+
 export function builtCount(world) {
   return world.blocks.filter((b) => !b.isCracked).length;
 }

@@ -279,6 +279,7 @@ function render() {
   renderUnlockBanner();
   renderControls();
   updateTimerChrome();
+  ensureFishLoop();
 }
 
 function wireStaticButtons() {
@@ -360,6 +361,7 @@ function drawWorld() {
   }
   drawSelection();
   drawInProgress();
+  drawFish(performance.now() / 1000);
 }
 
 function drawValidCells() {
@@ -410,6 +412,59 @@ function drawMoveDestinations(cell) {
     const r = cellRect(c.col, c.row);
     roundRect(ctx, r.x + 2.5, r.y + 2.5, r.w - 5, r.h - 5, 3.5);
     ctx.stroke();
+  }
+}
+
+// A fish patrols each run of >= 3 contiguous water blocks, gliding from one
+// end to the other and back (gentle sine motion, slowing at each turn).
+function drawFish(tSeconds) {
+  const runs = W.waterRuns(world());
+  runs.forEach((run, i) => {
+    const cy = (W.ROWS - 1 - run.row) * CELL_H + CELL_H / 2;
+    const margin = 7;
+    const minX = run.startCol * CELL_W + margin;
+    const maxX = (run.endCol + 1) * CELL_W - margin;
+    const mid = (minX + maxX) / 2;
+    const amp = (maxX - minX) / 2;
+    const period = Math.max(3, (run.endCol - run.startCol + 1) * 1.4); // s, full there-and-back
+    const omega = (2 * Math.PI) / period;
+    const phase = run.row * 0.7 + run.startCol * 0.5 + i; // desync multiple fish
+    const angle = tSeconds * omega + phase;
+    fishShape(mid + amp * Math.sin(angle), cy, Math.cos(angle) > 0);
+  });
+}
+
+function fishShape(x, y, facingRight) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (!facingRight) ctx.scale(-1, 1);
+  ctx.fillStyle = 'rgb(255, 138, 60)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 6, 3.6, 0, 0, Math.PI * 2); // body
+  ctx.fill();
+  ctx.beginPath();                                // tail
+  ctx.moveTo(-5, 0);
+  ctx.lineTo(-9.5, -3.4);
+  ctx.lineTo(-9.5, 3.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';              // eye
+  ctx.beginPath();
+  ctx.arc(2.6, -0.6, 0.85, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Continuous redraw loop, alive only while there's water to swim in.
+let fishRAF = null;
+function fishLoop() {
+  if (W.waterRuns(world()).length === 0) { fishRAF = null; return; }
+  drawWorld();
+  fishRAF = requestAnimationFrame(fishLoop);
+}
+function ensureFishLoop() {
+  if (fishRAF == null && W.waterRuns(world()).length > 0) {
+    fishRAF = requestAnimationFrame(fishLoop);
   }
 }
 
