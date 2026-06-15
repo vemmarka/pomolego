@@ -360,7 +360,7 @@ function drawWorld() {
 }
 
 function drawValidCells() {
-  ctx.strokeStyle = 'rgba(127,127,127,0.18)';
+  ctx.strokeStyle = 'rgba(127,127,127,0.12)';
   ctx.lineWidth = 1;
   for (const c of W.validCells(world())) {
     if (targetCell && c.col === targetCell.col && c.row === targetCell.row) continue;
@@ -509,8 +509,8 @@ function idleControls() {
   wrap.append(durationRow);
 
   wrap.append(el('p', { class: 'hint' },
-    targetCell ? 'Building on the marked spot — click a block to move or delete it'
-               : 'Click a cell to place your block, or a block to move or delete it'));
+    targetCell ? 'Building on the marked spot — click anywhere to move it, or a block to edit it'
+               : 'Click anywhere on the grid to place your block, or a block to move or delete it'));
 
   wrap.append(el('button', {
     class: 'btn btn-primary btn-block',

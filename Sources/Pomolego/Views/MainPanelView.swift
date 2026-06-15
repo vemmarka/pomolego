@@ -181,8 +181,8 @@ struct MainPanelView: View {
             }
 
             Text(state.targetCell != nil
-                 ? "Building on the marked spot — click an existing block to edit it"
-                 : "Click a cell to place your block, or a block to move or delete it")
+                 ? "Building on the marked spot — click anywhere to move it, or a block to edit it"
+                 : "Click anywhere on the grid to place your block, or a block to move or delete it")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity)

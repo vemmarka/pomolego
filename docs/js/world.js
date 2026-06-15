@@ -31,31 +31,29 @@ export function inBounds(col, row) {
   return col >= 0 && col < COLUMNS && row >= 0 && row < ROWS;
 }
 
-// Gravity rule: a block may sit on the ground row or directly on top of an
-// occupied cell. No floating blocks.
+// Free placement: any in-bounds, unoccupied cell is valid. Blocks may float
+// anywhere on the grid — there is no gravity/support requirement.
 export function isValidPlacement(world, col, row) {
-  if (!inBounds(col, row) || isOccupied(world, col, row)) return false;
-  if (row === 0) return true;
-  return isOccupied(world, col, row - 1);
+  return inBounds(col, row) && !isOccupied(world, col, row);
 }
 
-// Exactly one valid cell per column: the lowest unoccupied cell whose
-// support exists (ground or top of the column's stack).
+// Every empty cell on the grid.
 export function validCells(world) {
   const occ = occupancy(world);
   const result = [];
   for (let col = 0; col < COLUMNS; col++) {
-    let row = 0;
-    while (occ.has(cellKey(col, row))) row++;
-    if (inBounds(col, row)) result.push({ col, row });
+    for (let row = 0; row < ROWS; row++) {
+      if (!occ.has(cellKey(col, row))) result.push({ col, row });
+    }
   }
   return result;
 }
 
+// Highest occupied row (+1) in a column — used only for the idle skyline-ish
+// glyph. With free placement this is just "tallest filled row".
 export function columnHeight(world, col) {
-  let row = 0;
-  while (isOccupied(world, col, row)) row++;
-  return row;
+  const rows = world.blocks.filter((b) => b.col === col).map((b) => b.row);
+  return rows.length ? Math.max(...rows) + 1 : 0;
 }
 
 export function mostRecentBlock(world) {
@@ -72,15 +70,15 @@ export function nearestValidGroundCell(world, col) {
   return ground.reduce((a, b) => (Math.abs(a.col - col) <= Math.abs(b.col - col) ? a : b));
 }
 
-// Default target when the user starts without picking a spot.
+// Default target when the user starts without picking a spot: directly above
+// the most recently placed block (natural stacking) if free, else a free cell
+// near the bottom-center.
 export function defaultTarget(world) {
   const recent = mostRecentBlock(world);
-  if (recent) {
-    const above = { col: recent.col, row: columnHeight(world, recent.col) };
-    if (isValidPlacement(world, above.col, above.row)) return above;
-    return nearestValidGroundCell(world, recent.col);
+  if (recent && isValidPlacement(world, recent.col, recent.row + 1)) {
+    return { col: recent.col, row: recent.row + 1 };
   }
-  return nearestValidGroundCell(world, Math.floor(COLUMNS / 2));
+  return nearestValidGroundCell(world, Math.floor(COLUMNS / 2)) || validCells(world)[0] || null;
 }
 
 export function placeBlock(world, { designID, isCracked, col, row, placedAt }) {
@@ -92,36 +90,25 @@ export function placeBlock(world, { designID, isCracked, col, row, placedAt }) {
   return true;
 }
 
-// Remove a block; everything above it in the column falls one row so the
-// gravity invariant is preserved.
+// Remove a block. With free placement nothing falls — other blocks stay put.
 export function removeBlock(world, col, row) {
   const index = world.blocks.findIndex((b) => b.col === col && b.row === row);
   if (index < 0) return null;
-  const [removed] = world.blocks.splice(index, 1);
-  for (const b of world.blocks) {
-    if (b.col === col && b.row > row) b.row -= 1;
-  }
-  return removed;
+  return world.blocks.splice(index, 1)[0];
 }
 
+// Any other empty cell is a valid move destination.
 export function validMoveDestinations(world, col, row) {
   if (!isOccupied(world, col, row)) return [];
-  const clone = cloneWorld(world);
-  removeBlock(clone, col, row);
-  return validCells(clone).filter((c) => !(c.col === col && c.row === row));
+  return validCells(world).filter((c) => !(c.col === col && c.row === row));
 }
 
 export function moveBlock(world, from, to) {
   if (from.col === to.col && from.row === to.row) return false;
   const block = blockAt(world, from.col, from.row);
-  if (!block) return false;
-  const clone = cloneWorld(world);
-  removeBlock(clone, from.col, from.row);
-  if (!isValidPlacement(clone, to.col, to.row)) return false;
-  // Apply to the clone, then adopt it.
-  const moved = { ...block, col: to.col, row: to.row };
-  clone.blocks.push(moved);
-  world.blocks = clone.blocks;
+  if (!block || !isValidPlacement(world, to.col, to.row)) return false;
+  removeBlock(world, from.col, from.row);
+  world.blocks.push({ ...block, col: to.col, row: to.row });
   return true;
 }
 

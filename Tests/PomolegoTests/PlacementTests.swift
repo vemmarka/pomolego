@@ -15,7 +15,7 @@ final class PlacementTests: XCTestCase {
         return world
     }
 
-    // MARK: - Gravity rule
+    // MARK: - Free placement
 
     func testGroundCellsAreValidInEmptyWorld() {
         let world = makeWorld()
@@ -23,16 +23,18 @@ final class PlacementTests: XCTestCase {
         XCTAssertTrue(world.isValidPlacement(GridCell(col: World.columns - 1, row: 0)))
     }
 
-    func testFloatingCellIsInvalid() {
+    func testFloatingCellIsValid() {
+        // No gravity: a block can float anywhere on an empty grid.
         let world = makeWorld()
-        XCTAssertFalse(world.isValidPlacement(GridCell(col: 3, row: 1)))
-        XCTAssertFalse(world.isValidPlacement(GridCell(col: 3, row: 5)))
+        XCTAssertTrue(world.isValidPlacement(GridCell(col: 3, row: 1)))
+        XCTAssertTrue(world.isValidPlacement(GridCell(col: 3, row: 5)))
+        XCTAssertTrue(world.isValidPlacement(GridCell(col: 20, row: World.rows - 1)))
     }
 
-    func testCellOnTopOfBlockIsValid() {
+    func testAnyEmptyCellIsValidRegardlessOfSupport() {
         let world = makeWorld(columns: [(col: 4, height: 2)])
-        XCTAssertTrue(world.isValidPlacement(GridCell(col: 4, row: 2)))
-        XCTAssertFalse(world.isValidPlacement(GridCell(col: 4, row: 3)))
+        XCTAssertTrue(world.isValidPlacement(GridCell(col: 4, row: 2)))   // on top
+        XCTAssertTrue(world.isValidPlacement(GridCell(col: 4, row: 5)))   // floating above
     }
 
     func testOccupiedCellIsInvalid() {
@@ -48,22 +50,17 @@ final class PlacementTests: XCTestCase {
         XCTAssertFalse(world.isValidPlacement(GridCell(col: 0, row: World.rows)))
     }
 
-    func testSideBySideGroundPlacementNextToStack() {
-        let world = makeWorld(columns: [(col: 10, height: 3)])
-        // A new pile right next to an existing one starts at the ground.
-        XCTAssertTrue(world.isValidPlacement(GridCell(col: 11, row: 0)))
-        XCTAssertFalse(world.isValidPlacement(GridCell(col: 11, row: 1)))
-    }
-
     // MARK: - validCells
 
-    func testValidCellsHasExactlyOnePerNonFullColumn() {
+    func testValidCellsIsEveryEmptyCell() {
         let world = makeWorld(columns: [(col: 2, height: 3), (col: 7, height: 1)])
         let valid = world.validCells
-        XCTAssertEqual(valid.count, World.columns)
-        XCTAssertTrue(valid.contains(GridCell(col: 2, row: 3)))
-        XCTAssertTrue(valid.contains(GridCell(col: 7, row: 1)))
-        XCTAssertTrue(valid.contains(GridCell(col: 0, row: 0)))
+        // Total cells minus the 4 occupied ones.
+        XCTAssertEqual(valid.count, World.columns * World.rows - 4)
+        XCTAssertTrue(valid.contains(GridCell(col: 2, row: 3)))   // on top of a stack
+        XCTAssertTrue(valid.contains(GridCell(col: 7, row: 9)))   // floating
+        XCTAssertTrue(valid.contains(GridCell(col: 0, row: 0)))   // ground
+        XCTAssertFalse(valid.contains(GridCell(col: 2, row: 0)))  // occupied
         for cell in valid {
             XCTAssertTrue(world.isValidPlacement(cell))
         }
@@ -76,21 +73,19 @@ final class PlacementTests: XCTestCase {
 
     // MARK: - Placement
 
-    func testPlaceRejectsInvalidCell() {
-        var world = makeWorld()
+    func testPlaceRejectsOccupiedCell() {
+        var world = makeWorld(columns: [(col: 0, height: 1)])
         XCTAssertFalse(world.place(designID: "brick", isCracked: false,
-                                   at: GridCell(col: 0, row: 4), date: date))
-        XCTAssertTrue(world.blocks.isEmpty)
+                                   at: GridCell(col: 0, row: 0), date: date))
+        XCTAssertEqual(world.blocks.count, 1)
     }
 
-    func testPlaceAcceptsValidCellAndStacks() {
+    func testPlaceAcceptsFloatingCell() {
         var world = makeWorld()
         XCTAssertTrue(world.place(designID: "brick", isCracked: false,
-                                  at: GridCell(col: 6, row: 0), date: date))
-        XCTAssertTrue(world.place(designID: "glass", isCracked: false,
-                                  at: GridCell(col: 6, row: 1),
-                                  date: date.addingTimeInterval(1)))
-        XCTAssertEqual(world.columnHeight(6), 2)
+                                  at: GridCell(col: 6, row: 5), date: date))
+        XCTAssertTrue(world.isOccupied(GridCell(col: 6, row: 5)))
+        XCTAssertFalse(world.isOccupied(GridCell(col: 6, row: 0)))  // nothing below
     }
 
     // MARK: - Default target
@@ -100,40 +95,27 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(world.defaultTarget(), GridCell(col: World.columns / 2, row: 0))
     }
 
-    func testDefaultTargetStacksOnMostRecentColumn() {
+    func testDefaultTargetStacksAboveMostRecentBlock() {
         var world = makeWorld()
         world.place(designID: "brick", isCracked: false,
                     at: GridCell(col: 3, row: 0), date: date)
+        // Most recent is a floating block; default stacks directly above it.
         world.place(designID: "wood", isCracked: false,
-                    at: GridCell(col: 9, row: 0), date: date.addingTimeInterval(10))
-        XCTAssertEqual(world.defaultTarget(), GridCell(col: 9, row: 1))
-    }
-
-    func testDefaultTargetFallsBackToNearestGroundWhenColumnFull() {
-        var world = makeWorld(columns: [(col: 0, height: World.rows - 1)])
-        world.place(designID: "brick", isCracked: false,
-                    at: GridCell(col: 0, row: World.rows - 1),
-                    date: date.addingTimeInterval(100))
-        XCTAssertEqual(world.defaultTarget(), GridCell(col: 1, row: 0))
+                    at: GridCell(col: 9, row: 4), date: date.addingTimeInterval(10))
+        XCTAssertEqual(world.defaultTarget(), GridCell(col: 9, row: 5))
     }
 
     // MARK: - Remove
 
-    func testRemoveBlockCompactsColumnAbove() {
+    func testRemoveDoesNotMoveOtherBlocks() {
         var world = makeWorld(columns: [(col: 4, height: 4)])
         let removed = world.removeBlock(at: GridCell(col: 4, row: 1))
         XCTAssertNotNil(removed)
-        XCTAssertEqual(world.columnHeight(4), 3)
-        // No floating blocks: rows 0..2 occupied, row 3 free.
+        // Nothing falls: the gap at row 1 stays, blocks above keep their rows.
+        XCTAssertFalse(world.isOccupied(GridCell(col: 4, row: 1)))
         XCTAssertTrue(world.isOccupied(GridCell(col: 4, row: 2)))
-        XCTAssertFalse(world.isOccupied(GridCell(col: 4, row: 3)))
-        XCTAssertTrue(world.isValidPlacement(GridCell(col: 4, row: 3)))
-    }
-
-    func testRemoveTopBlock() {
-        var world = makeWorld(columns: [(col: 2, height: 2)])
-        world.removeBlock(at: GridCell(col: 2, row: 1))
-        XCTAssertEqual(world.columnHeight(2), 1)
+        XCTAssertTrue(world.isOccupied(GridCell(col: 4, row: 3)))
+        XCTAssertEqual(world.blocks.count, 3)
     }
 
     func testRemoveFromEmptyCellReturnsNil() {
@@ -144,54 +126,46 @@ final class PlacementTests: XCTestCase {
     func testRemoveDoesNotAffectOtherColumns() {
         var world = makeWorld(columns: [(col: 1, height: 2), (col: 2, height: 3)])
         world.removeBlock(at: GridCell(col: 1, row: 0))
-        XCTAssertEqual(world.columnHeight(1), 1)
-        XCTAssertEqual(world.columnHeight(2), 3)
+        XCTAssertFalse(world.isOccupied(GridCell(col: 1, row: 0)))
+        XCTAssertTrue(world.isOccupied(GridCell(col: 1, row: 1)))   // stays floating
+        XCTAssertEqual(world.blocks.filter { $0.col == 2 }.count, 3)
     }
 
     // MARK: - Move
 
-    func testMoveBlockToGroundElsewhere() {
+    func testMoveBlockToAnyEmptyCell() {
         var world = makeWorld(columns: [(col: 3, height: 2)])
         XCTAssertTrue(world.moveBlock(from: GridCell(col: 3, row: 1),
-                                      to: GridCell(col: 8, row: 0)))
-        XCTAssertEqual(world.columnHeight(3), 1)
-        XCTAssertTrue(world.isOccupied(GridCell(col: 8, row: 0)))
+                                      to: GridCell(col: 8, row: 7)))  // floating destination
+        XCTAssertFalse(world.isOccupied(GridCell(col: 3, row: 1)))
+        XCTAssertTrue(world.isOccupied(GridCell(col: 8, row: 7)))
     }
 
     func testMoveBlockKeepsDesignAndCrackedState() {
         var world = makeWorld()
         world.place(designID: "cracked", isCracked: true,
                     at: GridCell(col: 0, row: 0), date: date)
-        world.moveBlock(from: GridCell(col: 0, row: 0), to: GridCell(col: 5, row: 0))
-        let moved = world.block(at: GridCell(col: 5, row: 0))
+        world.moveBlock(from: GridCell(col: 0, row: 0), to: GridCell(col: 5, row: 9))
+        let moved = world.block(at: GridCell(col: 5, row: 9))
         XCTAssertEqual(moved?.designID, "cracked")
         XCTAssertEqual(moved?.isCracked, true)
     }
 
-    func testMoveToFloatingCellFails() {
-        var world = makeWorld(columns: [(col: 3, height: 1)])
+    func testMoveToOccupiedCellFails() {
+        var world = makeWorld(columns: [(col: 3, height: 1), (col: 8, height: 1)])
         XCTAssertFalse(world.moveBlock(from: GridCell(col: 3, row: 0),
-                                       to: GridCell(col: 8, row: 1)))
+                                       to: GridCell(col: 8, row: 0)))
         XCTAssertTrue(world.isOccupied(GridCell(col: 3, row: 0)))
     }
 
-    func testMoveBottomBlockWithinSameColumnToItsTop() {
-        // Removing the bottom of a 3-stack drops the rest; the freed top
-        // spot (row 2) is then a legal destination.
-        var world = makeWorld(columns: [(col: 6, height: 3)])
-        XCTAssertTrue(world.moveBlock(from: GridCell(col: 6, row: 0),
-                                      to: GridCell(col: 6, row: 2)))
-        XCTAssertEqual(world.columnHeight(6), 3)
-    }
-
-    func testValidMoveDestinationsExcludeSourceAndAccountForCompaction() {
-        let world = makeWorld(columns: [(col: 6, height: 3)])
-        let destinations = world.validMoveDestinations(from: GridCell(col: 6, row: 2))
-        // The top of the now-2-high stack is where the block already sits
-        // after compaction-removal, so its own cell is excluded.
-        XCTAssertFalse(destinations.contains(GridCell(col: 6, row: 2)))
+    func testValidMoveDestinationsAreAllOtherEmptyCells() {
+        let world = makeWorld(columns: [(col: 6, height: 1)])
+        let destinations = world.validMoveDestinations(from: GridCell(col: 6, row: 0))
+        // Everything except the source cell (which is the only occupied one).
+        XCTAssertEqual(destinations.count, World.columns * World.rows - 1)
+        XCTAssertFalse(destinations.contains(GridCell(col: 6, row: 0)))
         XCTAssertTrue(destinations.contains(GridCell(col: 0, row: 0)))
-        XCTAssertFalse(destinations.contains(GridCell(col: 0, row: 1)))
+        XCTAssertTrue(destinations.contains(GridCell(col: 0, row: 7)))  // floating ok
     }
 
     func testValidMoveDestinationsFromEmptyCellIsEmpty() {

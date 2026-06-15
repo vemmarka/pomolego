@@ -40,51 +40,47 @@ struct World: Codable, Equatable {
         (0..<World.columns).contains(cell.col) && (0..<World.rows).contains(cell.row)
     }
 
-    /// Gravity rule: a block may sit on the ground row or directly on top of
-    /// an occupied cell. No floating blocks.
+    /// Free placement: any in-bounds, unoccupied cell is valid. Blocks may
+    /// float anywhere on the grid — there is no gravity/support requirement.
     func isValidPlacement(_ cell: GridCell) -> Bool {
-        guard inBounds(cell), !isOccupied(cell) else { return false }
-        if cell.row == 0 { return true }
-        return isOccupied(GridCell(col: cell.col, row: cell.row - 1))
+        inBounds(cell) && !isOccupied(cell)
     }
 
+    /// Every empty cell on the grid.
     var validCells: [GridCell] {
         let occupied = occupancy
         var result: [GridCell] = []
         for col in 0..<World.columns {
-            // Exactly one valid cell per column: the lowest unoccupied cell
-            // whose support exists (ground or top of the column's stack).
-            var row = 0
-            while occupied.contains(GridCell(col: col, row: row)) { row += 1 }
-            let cell = GridCell(col: col, row: row)
-            if inBounds(cell) { result.append(cell) }
+            for row in 0..<World.rows {
+                let cell = GridCell(col: col, row: row)
+                if !occupied.contains(cell) { result.append(cell) }
+            }
         }
         return result
     }
 
-    /// Number of occupied cells from the ground up in a column, assuming the
-    /// column is a contiguous stack (which the gravity rule guarantees).
+    /// Highest occupied row in a column (+1), used only for the idle menu-bar
+    /// skyline glyph. With free placement this is just "tallest filled row".
     func columnHeight(_ col: Int) -> Int {
-        var row = 0
-        while isOccupied(GridCell(col: col, row: row)) { row += 1 }
-        return row
+        let rows = blocks.filter { $0.col == col }.map { $0.row }
+        guard let top = rows.max() else { return 0 }
+        return top + 1
     }
 
     var mostRecentBlock: PlacedBlock? {
         blocks.max(by: { $0.placedAt < $1.placedAt })
     }
 
-    /// Default target when the user starts without picking a spot:
-    /// on top of the most recently placed block's column if valid,
-    /// otherwise the nearest valid ground cell (nearest to that column,
-    /// or to the world's center when the world is empty).
+    /// Default target when the user starts without picking a spot: directly
+    /// above the most recently placed block (so consecutive sessions stack
+    /// naturally) if that cell is free, otherwise a free cell near the
+    /// bottom-center of the grid.
     func defaultTarget() -> GridCell? {
         if let recent = mostRecentBlock {
-            let above = GridCell(col: recent.col, row: columnHeight(recent.col))
+            let above = GridCell(col: recent.col, row: recent.row + 1)
             if isValidPlacement(above) { return above }
-            return nearestValidGroundCell(to: recent.col)
         }
-        return nearestValidGroundCell(to: World.columns / 2)
+        return nearestValidGroundCell(to: World.columns / 2) ?? validCells.first
     }
 
     func nearestValidGroundCell(to col: Int) -> GridCell? {
@@ -101,42 +97,30 @@ struct World: Codable, Equatable {
         return true
     }
 
-    /// Removes a block and lets everything above it in the column fall one
-    /// row, so the gravity invariant (contiguous stacks) is preserved.
+    /// Removes a block. With free placement nothing falls — other blocks stay
+    /// exactly where they are.
     @discardableResult
     mutating func removeBlock(at cell: GridCell) -> PlacedBlock? {
         guard let index = blocks.firstIndex(where: { $0.cell == cell }) else { return nil }
-        let removed = blocks.remove(at: index)
-        for i in blocks.indices
-        where blocks[i].col == cell.col && blocks[i].row > cell.row {
-            blocks[i].row -= 1
-        }
-        return removed
+        return blocks.remove(at: index)
     }
 
-    /// Where the block at `cell` could be moved: every valid cell of the
-    /// world as it would look after the block (and its column compaction)
-    /// is taken out.
+    /// Where the block at `cell` could be moved: any other empty cell.
     func validMoveDestinations(from cell: GridCell) -> [GridCell] {
         guard isOccupied(cell) else { return [] }
-        var without = self
-        without.removeBlock(at: cell)
-        return without.validCells.filter { $0 != cell }
+        return validCells.filter { $0 != cell }
     }
 
-    /// Moves a block, keeping its identity (design, cracked state, placement
-    /// date). Fails if the destination is not valid after removal.
+    /// Moves a block to any empty in-bounds cell, keeping its identity
+    /// (design, cracked state, placement date).
     @discardableResult
     mutating func moveBlock(from: GridCell, to: GridCell) -> Bool {
-        guard from != to, let block = block(at: from) else { return false }
-        var next = self
-        next.removeBlock(at: from)
-        guard next.isValidPlacement(to) else { return false }
+        guard from != to, let block = block(at: from), isValidPlacement(to) else { return false }
+        removeBlock(at: from)
         var moved = block
         moved.col = to.col
         moved.row = to.row
-        next.blocks.append(moved)
-        self = next
+        blocks.append(moved)
         return true
     }
 

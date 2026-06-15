@@ -84,7 +84,7 @@ struct WorldView: View {
         for cell in state.world.validCells where cell != state.targetCell {
             let r = rect(for: cell).insetBy(dx: 2.5, dy: 2.5)
             context.stroke(Path(roundedRect: r, cornerRadius: 3.5),
-                           with: .color(.secondary.opacity(0.18)),
+                           with: .color(.secondary.opacity(0.12)),
                            style: StrokeStyle(lineWidth: 1))
         }
     }

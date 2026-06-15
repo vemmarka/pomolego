@@ -44,11 +44,12 @@ validity (gravity rule, stacking, bounds, default targets).
   clock drift. If a session's deadline passes while the Mac sleeps or the
   app is closed, the session completes on wake/relaunch and the block is
   placed (the celebration shows once).
-- **World** — a 28×14 grid; row 0 is the ground. A block may only be placed
-  on the ground or directly on top of another block. The world persists
-  forever. While idle, clicking an existing block selects it for **moving or
-  deleting** (a later change to the original "never deletable" spec rule);
-  removing a block lets the column above fall down so nothing floats.
+- **World** — a 28×14 grid. Placement is **free**: a block can go in any
+  empty cell anywhere on the grid, floating or stacked — there is no gravity
+  or support requirement (a later change from the original spec's gravity
+  rule). The world persists forever. While idle, clicking an existing block
+  selects it for **moving or deleting** (also a change from the original
+  "never deletable" rule); removing a block leaves everything else in place.
   Settings → Danger Zone can archive the world and start a fresh canvas
   (statistics keep all history).
 - **Designs** — 19 designs unlock as your all-time completed block count
@@ -68,8 +69,8 @@ validity (gravity rule, stacking, bounds, default targets).
   the repository (Pomodoro + LEGO).
 - **Valid-cell highlighting** is always visible whenever placement is
   possible (idle and during focus) instead of a separate "Choose spot"
-  mode — fewer clicks, same behaviors (stacking and side-by-side ground
-  placement). Tapping a highlighted cell sets/moves the dashed ghost target.
+  mode — fewer clicks. With free placement this renders as a faint grid over
+  the empty cells. Tapping a cell sets/moves the dashed ghost target.
 - **Skipping a long break also resets** the consecutive-session counter;
   otherwise the very next session would immediately propose another long
   break.
