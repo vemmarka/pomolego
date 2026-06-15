@@ -70,7 +70,8 @@ final class AppState: ObservableObject {
         self.worldFile = store.loadWorld()
         self.sessions = store.loadSessions()
         self.selectedDesignID = AppSettings.selectedDesignID
-        self.focusMinutes = AppSettings.focusMinutes
+        // Clamp any previously-saved value to the 5-minute floor.
+        self.focusMinutes = min(180, max(5, AppSettings.focusMinutes))
         self.engine = TimerEngine()
         engine.config = TimerEngine.Config(
             sessionsBeforeLongBreak: AppSettings.sessionsBeforeLongBreak,

@@ -168,7 +168,7 @@ struct MainPanelView: View {
                     .multilineTextAlignment(.trailing)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { applyCustomMinutes() }
-                Stepper("", value: $state.focusMinutes, in: 1...180)
+                Stepper("", value: $state.focusMinutes, in: 5...180)
                     .labelsHidden()
                     .accessibilityLabel("Focus duration, \(state.focusMinutes) minutes")
                 Text("min")
@@ -222,7 +222,7 @@ struct MainPanelView: View {
 
     private func applyCustomMinutes() {
         if let minutes = Int(customMinutesText) {
-            state.focusMinutes = min(180, max(1, minutes))
+            state.focusMinutes = min(180, max(5, minutes))
         }
         customMinutesText = "\(state.focusMinutes)"
     }

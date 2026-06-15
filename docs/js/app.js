@@ -12,13 +12,16 @@ import { computeStats } from './stats.js';
 const CELL_W = 24;
 const CELL_H = 18;
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
+const MIN_FOCUS_MINUTES = 5;
+const MAX_FOCUS_MINUTES = 180;
 
 const engine = new TimerEngine();
 let settings = Store.loadSettings();
 let worldFile = Store.loadWorldFile();
 let sessions = Store.loadSessions();
 let selectedDesignID = settings.selectedDesignID;
-let focusMinutes = settings.focusMinutes;
+let focusMinutes = Math.min(MAX_FOCUS_MINUTES, Math.max(MIN_FOCUS_MINUTES, settings.focusMinutes));
+settings.focusMinutes = focusMinutes; // clamp any previously-saved sub-5 value
 let targetCell = null;
 let editMode = { kind: 'none' }; // none | { kind:'selected', cell } | { kind:'moving', cell }
 let unlockAnnouncement = null;
@@ -154,7 +157,7 @@ function selectDesign(design) {
 }
 
 function setFocusMinutes(value) {
-  focusMinutes = Math.min(180, Math.max(1, value));
+  focusMinutes = Math.min(MAX_FOCUS_MINUTES, Math.max(MIN_FOCUS_MINUTES, value));
   settings.focusMinutes = focusMinutes;
   Store.saveSettings(settings);
   render();
@@ -503,7 +506,7 @@ function idleControls() {
       onclick: () => setFocusMinutes(preset),
     }, String(preset)));
   }
-  const input = el('input', { class: 'duration-input', type: 'number', min: 1, max: 180, value: focusMinutes });
+  const input = el('input', { class: 'duration-input', type: 'number', min: MIN_FOCUS_MINUTES, max: MAX_FOCUS_MINUTES, value: focusMinutes });
   input.addEventListener('change', () => setFocusMinutes(parseInt(input.value, 10) || focusMinutes));
   durationRow.append(input, el('span', { class: 'unit' }, 'min'));
   wrap.append(durationRow);
@@ -722,7 +725,7 @@ function openSettings() {
   body.innerHTML = '';
 
   body.append(settingGroup('Durations', [
-    numberRow('Focus', 'focusMinutes', 1, 180),
+    numberRow('Focus', 'focusMinutes', MIN_FOCUS_MINUTES, MAX_FOCUS_MINUTES),
     numberRow('Short break', 'shortBreakMinutes', 1, 60),
     numberRow('Long break', 'longBreakMinutes', 1, 120),
     numberRow('Sessions before long break', 'sessionsBeforeLongBreak', 2, 12),

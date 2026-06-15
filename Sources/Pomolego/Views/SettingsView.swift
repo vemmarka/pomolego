@@ -28,7 +28,7 @@ private struct GeneralSettingsTab: View {
     var body: some View {
         Form {
             Section("Durations") {
-                Stepper(value: $focusMinutes, in: 1...180) {
+                Stepper(value: $focusMinutes, in: 5...180) {
                     labeledValue("Focus", "\(focusMinutes) min")
                 }
                 Stepper(value: $shortBreak, in: 1...60) {
