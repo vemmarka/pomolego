@@ -1,10 +1,9 @@
 # Pomolego
 
 A native macOS menu bar Pomodoro app where every completed focus session
-builds one block in a persistent 2D world. Pick a design, pick the exact
-spot on the ground or on top of existing blocks, focus, and watch your
+builds one block in a persistent 2D world. Pick the exact spot on the ground or on top of existing blocks, focus, and watch your
 city grow. Abandon a session and a cracked gray block marks the spot.
-Think *Forest, but focus LEGO*.
+Think *Pomodoro + LEGO*.
 
 - **Swift 5.9+ / SwiftUI**, minimum macOS 14
 - Menu-bar-only (`LSUIElement`), no Dock icon
