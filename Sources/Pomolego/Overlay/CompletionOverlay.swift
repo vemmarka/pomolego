@@ -41,7 +41,19 @@ final class OverlayController {
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
-        panel.contentView = NSHostingView(rootView: content)
+
+        // Host the SwiftUI overlay with a fixed frame and no autolayout-driven
+        // sizing. The overlay animates (scale/offset/confetti), and a bare
+        // NSHostingView in a borderless panel will otherwise post window
+        // constraint updates mid-animation, which AppKit turns into an
+        // uncaught exception (_postWindowNeedsUpdateConstraints) and aborts.
+        // sizingOptions = [] stops the hosting view from driving window layout.
+        let hosting = NSHostingView(rootView: content)
+        hosting.sizingOptions = []
+        hosting.translatesAutoresizingMaskIntoConstraints = true
+        hosting.frame = NSRect(origin: .zero, size: size)
+        hosting.autoresizingMask = [.width, .height]
+        panel.contentView = hosting
 
         panel.setFrameOrigin(origin(for: position, size: size,
                                     anchor: anchor, screen: screen))
