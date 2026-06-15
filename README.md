@@ -83,6 +83,45 @@ validity (gravity rule, stacking, bounds, default targets).
 - No app sandbox/hardened runtime for the v1 dev build (ad-hoc signed,
   local use).
 
+## Web version
+
+`docs/` contains a standalone web version of Pomolego — same world, designs,
+unlocks, timer, breaks, editing, settings, statistics, and a silent completion
+animation. It is a static site (HTML + CSS + vanilla JS modules, all block art
+drawn on `<canvas>`), with **no build step and no dependencies**. State is saved
+in the browser via `localStorage` (the web equivalent of the native app's local
+files), including resuming a running timer after a refresh or tab close. The
+countdown shows in the browser tab title and favicon — the web stand-in for the
+menu bar.
+
+Run it locally with any static server:
+
+```sh
+cd docs
+python3 -m http.server 8765
+# open http://localhost:8765
+```
+
+(Opening `index.html` directly via `file://` won't work because it uses ES
+modules — use a local server, or just visit the deployed site.)
+
+### Deploying to pomolego.vemmarka.com (GitHub Pages)
+
+The web app is served from `docs/` on the `main` branch. `docs/CNAME` already
+pins the custom domain. Two one-time manual steps:
+
+1. **Enable Pages** — in the GitHub repo: Settings → Pages → "Build and
+   deployment" → Source: *Deploy from a branch* → Branch: `main`, folder:
+   `/docs` → Save. GitHub will show the custom domain `pomolego.vemmarka.com`
+   (read from the CNAME file) and, once DNS resolves, offer "Enforce HTTPS".
+2. **Add a DNS record** — wherever vemmarka.com's DNS is managed, add a CNAME
+   record: host/name `pomolego`, value `vemmarka.github.io` (your GitHub
+   username + `.github.io`). DNS can take from minutes to a few hours to
+   propagate.
+
+After both, the site is live at https://pomolego.vemmarka.com. Pushing to
+`main` redeploys automatically.
+
 ## Future ideas (out of scope for v1)
 
 - iCloud sync
