@@ -65,31 +65,92 @@ struct WorldView: View {
         }
     }
 
-    /// A fish patrols each run of >= 3 contiguous water blocks, gliding end to
-    /// end and back (sine motion, slowing at each turn).
+    // Time-driven so motion stays smooth. Runs of >= 5 water blocks get
+    // bubbles, occasional fish loops, and a school passing through.
+    private static let richWater = 5
+    private static let loopPeriod = 10.0, loopDuration = 1.3
+    private static let schoolPeriod = 19.0, schoolDuration = 4.0
+    private static let fishColor = Color(red: 1.0, green: 0.54, blue: 0.24)
+
+    /// A fish patrols each run of >= 3 contiguous water blocks (sine motion,
+    /// slowing at each turn), plus the richer effects on >= 5-block runs.
     private func drawFish(_ context: GraphicsContext, date: Date) {
         let t = date.timeIntervalSinceReferenceDate
         for (i, run) in state.world.waterRuns.enumerated() {
-            let cy = CGFloat(World.rows - 1 - run.row) * Self.cellHeight + Self.cellHeight / 2
+            let rowTop = CGFloat(World.rows - 1 - run.row) * Self.cellHeight
+            let cy = rowTop + Self.cellHeight / 2
             let margin: CGFloat = 7
             let minX = CGFloat(run.startCol) * Self.cellWidth + margin
             let maxX = CGFloat(run.endCol + 1) * Self.cellWidth - margin
+            let len = run.endCol - run.startCol + 1
+            let rich = len >= Self.richWater
+            let seed = Double(run.row) * 0.7 + Double(run.startCol) * 0.5 + Double(i)
+
+            if rich { drawBubbles(context, run: run, rowTop: rowTop, t: t, seed: seed) }
+
             let mid = (minX + maxX) / 2
             let amp = (maxX - minX) / 2
-            let period = max(3.0, Double(run.endCol - run.startCol + 1) * 1.4)
-            let omega = 2 * Double.pi / period
-            let phase = Double(run.row) * 0.7 + Double(run.startCol) * 0.5 + Double(i)
-            let angle = t * omega + phase
-            let x = mid + amp * CGFloat(sin(angle))
-            drawFishShape(context, at: CGPoint(x: x, y: cy), facingRight: cos(angle) > 0)
+            let omega = 2 * Double.pi / max(3.0, Double(len) * 1.4)
+            let angle = t * omega + seed
+            var x = mid + amp * CGFloat(sin(angle))
+            var y = cy
+            if rich {
+                let loopT = (t + seed * 3).truncatingRemainder(dividingBy: Self.loopPeriod)
+                if loopT < Self.loopDuration {
+                    let p = loopT / Self.loopDuration
+                    let r = min(Self.cellHeight * 0.55, 8)
+                    x += r * CGFloat(sin(2 * Double.pi * p))
+                    y -= r * CGFloat(1 - cos(2 * Double.pi * p))
+                }
+            }
+            drawFishShape(context, at: CGPoint(x: x, y: y), facingRight: cos(angle) > 0)
+
+            if rich { drawSchool(context, minX: minX, maxX: maxX, rowTop: rowTop, t: t, seed: seed) }
         }
     }
 
-    private func drawFishShape(_ context: GraphicsContext, at p: CGPoint, facingRight: Bool) {
+    private func drawBubbles(_ context: GraphicsContext, run: WaterRun, rowTop: CGFloat,
+                             t: Double, seed: Double) {
+        let left = CGFloat(run.startCol) * Self.cellWidth
+        let width = CGFloat(run.endCol + 1) * Self.cellWidth - left
+        let count = min(8, run.endCol - run.startCol + 1)
+        for k in 0..<count {
+            let rise = (t * (0.32 + 0.05 * Double(k % 3)) + Double(k) * 0.37 + seed)
+                .truncatingRemainder(dividingBy: 1)
+            let bx = left + (CGFloat(k) + 0.5) / CGFloat(count) * width
+                + CGFloat(sin(t * 1.3 + Double(k))) * 2
+            let by = rowTop + Self.cellHeight - CGFloat(rise) * Self.cellHeight
+            let radius = 0.9 + (1 - CGFloat(rise)) * 1.0
+            let alpha = 0.55 * (1 - rise) + 0.1
+            context.fill(Path(ellipseIn: CGRect(x: bx - radius, y: by - radius,
+                                                width: radius * 2, height: radius * 2)),
+                         with: .color(.white.opacity(alpha)))
+        }
+    }
+
+    private func drawSchool(_ context: GraphicsContext, minX: CGFloat, maxX: CGFloat,
+                            rowTop: CGFloat, t: Double, seed: Double) {
+        let local = (t + seed * 5).truncatingRemainder(dividingBy: Self.schoolPeriod)
+        guard local <= Self.schoolDuration else { return }
+        let p = CGFloat(local / Self.schoolDuration)
+        let dir: CGFloat = Int((t + seed * 5) / Self.schoolPeriod) % 2 == 0 ? 1 : -1
+        let span = maxX - minX + 36
+        let headX = dir == 1 ? minX - 18 + p * span : maxX + 18 - p * span
+        let cy = rowTop + Self.cellHeight * 0.4
+        let school = Color(red: 1.0, green: 0.70, blue: 0.38)
+        for (dx, dy) in [(0.0, 0.0), (-8.0, -4.0), (-8.0, 4.0), (-16.0, -2.0), (-16.0, 5.0)] {
+            drawFishShape(context, at: CGPoint(x: headX + dir * CGFloat(dx), y: cy + CGFloat(dy)),
+                          facingRight: dir == 1, scale: 0.5, color: school)
+        }
+    }
+
+    private func drawFishShape(_ context: GraphicsContext, at p: CGPoint, facingRight: Bool,
+                               scale: CGFloat = 1, color: Color? = nil) {
         var ctx = context
         ctx.translateBy(x: p.x, y: p.y)
         if !facingRight { ctx.scaleBy(x: -1, y: 1) }
-        let fish = Color(red: 1.0, green: 0.54, blue: 0.24)
+        if scale != 1 { ctx.scaleBy(x: scale, y: scale) }
+        let fish = color ?? Self.fishColor
         ctx.fill(Path(ellipseIn: CGRect(x: -6, y: -3.6, width: 12, height: 7.2)), with: .color(fish))
         var tail = Path()
         tail.move(to: CGPoint(x: -5, y: 0))

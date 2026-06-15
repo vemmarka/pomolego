@@ -52,6 +52,11 @@ validity (gravity rule, stacking, bounds, default targets).
   "never deletable" rule); removing a block leaves everything else in place.
   Settings → Danger Zone can archive the world and start a fresh canvas
   (statistics keep all history).
+- **Water life** — build 3+ Water blocks contiguously in one horizontal row
+  and a fish swims back and forth across them. Make the run 5+ long and it
+  comes alive: rising bubbles, the fish doing occasional loops, and a small
+  school passing through now and then. All time-driven and drawn
+  programmatically; the web version animates only while water exists.
 - **Designs** — 19 designs unlock as your all-time completed block count
   grows: Brick/Glass/Wood from the start, then Garden (3), Stone (6),
   Sandstone (10), Water (12), Blossom (14), Neon (19), Coral (25),

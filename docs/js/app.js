@@ -415,30 +415,86 @@ function drawMoveDestinations(cell) {
   }
 }
 
-// A fish patrols each run of >= 3 contiguous water blocks, gliding from one
-// end to the other and back (gentle sine motion, slowing at each turn).
+// Time-driven (deterministic) so motion stays smooth frame to frame.
+const RICH_WATER = 5;        // run length that unlocks bubbles + loops + schools
+const LOOP_PERIOD = 10;      // s between the main fish's little loops
+const LOOP_DURATION = 1.3;   // s the loop takes
+const SCHOOL_PERIOD = 19;    // s between passing schools
+const SCHOOL_DURATION = 4;   // s a school takes to cross
+
+// A fish patrols each run of >= 3 contiguous water blocks (gentle sine motion,
+// slowing at each turn). Runs of >= 5 also get bubbles, occasional loops, and
+// a school of fish passing through from time to time.
 function drawFish(tSeconds) {
-  const runs = W.waterRuns(world());
-  runs.forEach((run, i) => {
-    const cy = (W.ROWS - 1 - run.row) * CELL_H + CELL_H / 2;
+  W.waterRuns(world()).forEach((run, i) => {
+    const rowTop = (W.ROWS - 1 - run.row) * CELL_H;
+    const cy = rowTop + CELL_H / 2;
     const margin = 7;
     const minX = run.startCol * CELL_W + margin;
     const maxX = (run.endCol + 1) * CELL_W - margin;
+    const len = run.endCol - run.startCol + 1;
+    const rich = len >= RICH_WATER;
+    const seed = run.row * 0.7 + run.startCol * 0.5 + i; // desync runs
+
+    if (rich) drawBubbles(tSeconds, run, rowTop, seed);
+
     const mid = (minX + maxX) / 2;
     const amp = (maxX - minX) / 2;
-    const period = Math.max(3, (run.endCol - run.startCol + 1) * 1.4); // s, full there-and-back
-    const omega = (2 * Math.PI) / period;
-    const phase = run.row * 0.7 + run.startCol * 0.5 + i; // desync multiple fish
-    const angle = tSeconds * omega + phase;
-    fishShape(mid + amp * Math.sin(angle), cy, Math.cos(angle) > 0);
+    const omega = (2 * Math.PI) / Math.max(3, len * 1.4);
+    const angle = tSeconds * omega + seed;
+    let fx = mid + amp * Math.sin(angle);
+    let fy = cy;
+    if (rich) {
+      const loopT = (tSeconds + seed * 3) % LOOP_PERIOD;
+      if (loopT < LOOP_DURATION) {
+        const p = loopT / LOOP_DURATION;
+        const r = Math.min(CELL_H * 0.55, 8);
+        fx += r * Math.sin(2 * Math.PI * p);
+        fy -= r * (1 - Math.cos(2 * Math.PI * p)); // up and over, back to start
+      }
+    }
+    fishShape(fx, fy, Math.cos(angle) > 0);
+
+    if (rich) drawSchool(tSeconds, minX, maxX, rowTop, seed);
   });
 }
 
-function fishShape(x, y, facingRight) {
+function drawBubbles(t, run, rowTop, seed) {
+  const left = run.startCol * CELL_W;
+  const width = (run.endCol + 1) * CELL_W - left;
+  const count = Math.min(8, run.endCol - run.startCol + 1);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  for (let k = 0; k < count; k++) {
+    const rise = (t * (0.32 + 0.05 * (k % 3)) + k * 0.37 + seed) % 1; // 0 bottom → 1 top
+    const bx = left + ((k + 0.5) / count) * width + Math.sin(t * 1.3 + k) * 2;
+    const by = rowTop + CELL_H - rise * CELL_H;
+    ctx.globalAlpha = 0.55 * (1 - rise) + 0.1;
+    ctx.beginPath();
+    ctx.arc(bx, by, 0.9 + (1 - rise) * 1.0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSchool(t, minX, maxX, rowTop, seed) {
+  const local = (t + seed * 5) % SCHOOL_PERIOD;
+  if (local > SCHOOL_DURATION) return;
+  const p = local / SCHOOL_DURATION;
+  const dir = Math.floor((t + seed * 5) / SCHOOL_PERIOD) % 2 === 0 ? 1 : -1;
+  const span = maxX - minX + 36;
+  const headX = dir === 1 ? minX - 18 + p * span : maxX + 18 - p * span;
+  const cy = rowTop + CELL_H * 0.4;
+  for (const [dx, dy] of [[0, 0], [-8, -4], [-8, 4], [-16, -2], [-16, 5]]) {
+    fishShape(headX + dir * dx, cy + dy, dir === 1, 0.5, 'rgb(255, 178, 96)');
+  }
+}
+
+function fishShape(x, y, facingRight, scale = 1, color = 'rgb(255, 138, 60)') {
   ctx.save();
   ctx.translate(x, y);
   if (!facingRight) ctx.scale(-1, 1);
-  ctx.fillStyle = 'rgb(255, 138, 60)';
+  if (scale !== 1) ctx.scale(scale, scale);
+  ctx.fillStyle = color;
   ctx.beginPath();
   ctx.ellipse(0, 0, 6, 3.6, 0, 0, Math.PI * 2); // body
   ctx.fill();
