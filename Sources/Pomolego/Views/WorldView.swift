@@ -55,6 +55,7 @@ struct WorldView: View {
                 drawSelection(context)
                 drawInProgress(context)
                 drawFish(context, date: timeline.date)
+                drawFlowers(context, date: timeline.date)
             }
         }
         .onTapGesture(coordinateSpace: .local) { location in
@@ -109,7 +110,7 @@ struct WorldView: View {
         }
     }
 
-    private func drawBubbles(_ context: GraphicsContext, run: WaterRun, rowTop: CGFloat,
+    private func drawBubbles(_ context: GraphicsContext, run: BlockRun, rowTop: CGFloat,
                              t: Double, seed: Double) {
         let left = CGFloat(run.startCol) * Self.cellWidth
         let width = CGFloat(run.endCol + 1) * Self.cellWidth - left
@@ -142,6 +143,65 @@ struct WorldView: View {
             drawFishShape(context, at: CGPoint(x: headX + dir * CGFloat(dx), y: cy + CGFloat(dy)),
                           facingRight: dir == 1, scale: 0.5, color: school)
         }
+    }
+
+    private static let flowerColors: [Color] = [
+        Color(red: 0.94, green: 0.51, blue: 0.67),
+        Color(red: 0.96, green: 0.82, blue: 0.35),
+        Color(red: 0.96, green: 0.96, blue: 0.96),
+        Color(red: 0.92, green: 0.43, blue: 0.43),
+    ]
+
+    /// Flowers sprout on each run of >= 3 contiguous garden blocks — one per
+    /// block, growing in over a couple of seconds (since the run completed)
+    /// then swaying gently.
+    private func drawFlowers(_ context: GraphicsContext, date: Date) {
+        let t = date.timeIntervalSinceReferenceDate
+        for run in state.world.gardenRuns {
+            let rowTop = CGFloat(World.rows - 1 - run.row) * Self.cellHeight
+            let newest = state.world.blocks
+                .filter { $0.row == run.row && $0.designID == "garden"
+                    && $0.col >= run.startCol && $0.col <= run.endCol }
+                .map(\.placedAt).max()
+            let age = newest.map { date.timeIntervalSince($0) } ?? 99
+            for col in run.startCol...run.endCol {
+                drawFlower(context, x: CGFloat(col) * Self.cellWidth + Self.cellWidth * 0.5,
+                           rowTop: rowTop, col: col, t: t, age: age)
+            }
+        }
+    }
+
+    private func drawFlower(_ context: GraphicsContext, x: CGFloat, rowTop: CGFloat,
+                            col: Int, t: Double, age: Double) {
+        let g = max(0, min(1, (age - Double(col % 5) * 0.12) / 1.6)) // staggered grow-in
+        guard g > 0 else { return }
+        let gc = CGFloat(g)
+        let baseY = rowTop + 2
+        let height = Self.cellHeight * 0.85 * gc
+        let sway = CGFloat(sin(t * 1.6 + Double(col) * 1.3)) * 2 * gc
+        let tipX = x + sway
+        let tipY = baseY - height
+
+        var stem = Path()
+        stem.move(to: CGPoint(x: x, y: baseY))
+        stem.addQuadCurve(to: CGPoint(x: tipX, y: tipY),
+                          control: CGPoint(x: (x + tipX) / 2, y: baseY - height * 0.5))
+        context.stroke(stem, with: .color(Color(red: 0.27, green: 0.51, blue: 0.24)), lineWidth: 1)
+
+        let color = Self.flowerColors[col % Self.flowerColors.count]
+        let petalR = 1.8 * gc
+        let dist = 2.6 * gc
+        for k in 0..<5 {
+            let a = Double(k) / 5 * 2 * Double.pi
+            let px = tipX + CGFloat(cos(a)) * dist
+            let py = tipY + CGFloat(sin(a)) * dist
+            context.fill(Path(ellipseIn: CGRect(x: px - petalR, y: py - petalR,
+                                                width: petalR * 2, height: petalR * 2)),
+                         with: .color(color))
+        }
+        let cr = 1.3 * gc
+        context.fill(Path(ellipseIn: CGRect(x: tipX - cr, y: tipY - cr, width: cr * 2, height: cr * 2)),
+                     with: .color(Color(red: 0.98, green: 0.86, blue: 0.35)))
     }
 
     private func drawFishShape(_ context: GraphicsContext, at p: CGPoint, facingRight: Bool,

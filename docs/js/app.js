@@ -279,7 +279,7 @@ function render() {
   renderUnlockBanner();
   renderControls();
   updateTimerChrome();
-  ensureFishLoop();
+  ensureAmbientLoop();
 }
 
 function wireStaticButtons() {
@@ -362,6 +362,7 @@ function drawWorld() {
   drawSelection();
   drawInProgress();
   drawFish(performance.now() / 1000);
+  drawFlowers(performance.now() / 1000);
 }
 
 function drawValidCells() {
@@ -511,16 +512,70 @@ function fishShape(x, y, facingRight, scale = 1, color = 'rgb(255, 138, 60)') {
   ctx.restore();
 }
 
-// Continuous redraw loop, alive only while there's water to swim in.
-let fishRAF = null;
-function fishLoop() {
-  if (W.waterRuns(world()).length === 0) { fishRAF = null; return; }
-  drawWorld();
-  fishRAF = requestAnimationFrame(fishLoop);
+// Flowers sprout on each run of >= 3 contiguous garden blocks: one per block,
+// growing in over a couple of seconds (since the run was completed) and then
+// swaying gently.
+const FLOWER_COLORS = ['rgb(240,130,170)', 'rgb(245,210,90)', 'rgb(245,245,245)', 'rgb(235,110,110)'];
+
+function drawFlowers(tSeconds) {
+  W.gardenRuns(world()).forEach((run) => {
+    const rowTop = (W.ROWS - 1 - run.row) * CELL_H;
+    let newest = 0;
+    for (const b of world().blocks) {
+      if (b.row === run.row && b.designID === 'garden' && b.col >= run.startCol && b.col <= run.endCol) {
+        newest = Math.max(newest, b.placedAt || 0);
+      }
+    }
+    const ageSec = newest ? (Date.now() - newest) / 1000 : 99;
+    for (let col = run.startCol; col <= run.endCol; col++) {
+      flowerAt(col * CELL_W + CELL_W * 0.5, rowTop, col, tSeconds, ageSec);
+    }
+  });
 }
-function ensureFishLoop() {
-  if (fishRAF == null && W.waterRuns(world()).length > 0) {
-    fishRAF = requestAnimationFrame(fishLoop);
+
+function flowerAt(x, rowTop, col, t, ageSec) {
+  const g = Math.max(0, Math.min(1, (ageSec - (col % 5) * 0.12) / 1.6)); // staggered grow-in
+  if (g <= 0) return;
+  const baseY = rowTop + 2;
+  const height = CELL_H * 0.85 * g;
+  const sway = Math.sin(t * 1.6 + col * 1.3) * 2 * g;
+  const tipX = x + sway;
+  const tipY = baseY - height;
+  ctx.strokeStyle = 'rgb(70, 130, 60)';            // stem
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, baseY);
+  ctx.quadraticCurveTo((x + tipX) / 2, baseY - height * 0.5, tipX, tipY);
+  ctx.stroke();
+  ctx.fillStyle = FLOWER_COLORS[col % FLOWER_COLORS.length]; // petals
+  const petalR = 1.8 * g;
+  const dist = 2.6 * g;
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(tipX + Math.cos(a) * dist, tipY + Math.sin(a) * dist, petalR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgb(250, 220, 90)';             // center
+  ctx.beginPath();
+  ctx.arc(tipX, tipY, 1.3 * g, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Continuous redraw loop, alive only while there's animated life (water or
+// flowering garden) on the board.
+function hasAmbientLife() {
+  return W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0;
+}
+let ambientRAF = null;
+function ambientLoop() {
+  if (!hasAmbientLife()) { ambientRAF = null; return; }
+  drawWorld();
+  ambientRAF = requestAnimationFrame(ambientLoop);
+}
+function ensureAmbientLoop() {
+  if (ambientRAF == null && hasAmbientLife()) {
+    ambientRAF = requestAnimationFrame(ambientLoop);
   }
 }
 

@@ -127,31 +127,35 @@ struct World: Codable, Equatable {
     var builtCount: Int { blocks.filter { !$0.isCracked }.count }
     var crackedCount: Int { blocks.filter(\.isCracked).count }
 
-    /// Maximal horizontal runs of >= 3 contiguous (no-gap) water blocks in the
-    /// same row. Each becomes a little aquarium with a patrolling fish.
-    var waterRuns: [WaterRun] {
+    /// Maximal horizontal runs of >= minLength contiguous (no-gap) blocks of
+    /// the given design in the same row.
+    func horizontalRuns(ofDesign designID: String, minLength: Int = 3) -> [BlockRun] {
         var byRow: [Int: [Int]] = [:]
-        for b in blocks where b.designID == "water" && !b.isCracked {
+        for b in blocks where b.designID == designID && !b.isCracked {
             byRow[b.row, default: []].append(b.col)
         }
-        var runs: [WaterRun] = []
+        var runs: [BlockRun] = []
         for (row, unsorted) in byRow {
             let cols = unsorted.sorted()
             var start = cols[0]
             var prev = cols[0]
             for c in cols.dropFirst() {
                 if c == prev + 1 { prev = c; continue }
-                if prev - start + 1 >= 3 { runs.append(WaterRun(row: row, startCol: start, endCol: prev)) }
+                if prev - start + 1 >= minLength { runs.append(BlockRun(row: row, startCol: start, endCol: prev)) }
                 start = c
                 prev = c
             }
-            if prev - start + 1 >= 3 { runs.append(WaterRun(row: row, startCol: start, endCol: prev)) }
+            if prev - start + 1 >= minLength { runs.append(BlockRun(row: row, startCol: start, endCol: prev)) }
         }
         return runs
     }
+
+    /// Water runs grow a patrolling fish; garden runs grow flowers.
+    var waterRuns: [BlockRun] { horizontalRuns(ofDesign: "water") }
+    var gardenRuns: [BlockRun] { horizontalRuns(ofDesign: "garden") }
 }
 
-struct WaterRun: Equatable {
+struct BlockRun: Equatable {
     let row: Int
     let startCol: Int
     let endCol: Int

@@ -197,7 +197,7 @@ final class PlacementTests: XCTestCase {
     func testThreeContiguousWaterFormsARun() {
         var world = makeWorld()
         placeWater(&world, row: 0, cols: [4, 5, 6])
-        XCTAssertEqual(world.waterRuns, [WaterRun(row: 0, startCol: 4, endCol: 6)])
+        XCTAssertEqual(world.waterRuns, [BlockRun(row: 0, startCol: 4, endCol: 6)])
     }
 
     func testTwoWaterIsNotEnough() {
@@ -209,7 +209,7 @@ final class PlacementTests: XCTestCase {
     func testGapBreaksTheRun() {
         var world = makeWorld()
         placeWater(&world, row: 0, cols: [0, 1, 2, 4, 5]) // gap at col 3
-        XCTAssertEqual(world.waterRuns, [WaterRun(row: 0, startCol: 0, endCol: 2)])
+        XCTAssertEqual(world.waterRuns, [BlockRun(row: 0, startCol: 0, endCol: 2)])
     }
 
     func testWaterRunsArestrictlyPerRow() {
@@ -219,8 +219,8 @@ final class PlacementTests: XCTestCase {
         placeWater(&world, row: 5, cols: [0, 1])              // too short
         let runs = world.waterRuns
         XCTAssertEqual(runs.count, 2)
-        XCTAssertTrue(runs.contains(WaterRun(row: 0, startCol: 0, endCol: 2)))
-        XCTAssertTrue(runs.contains(WaterRun(row: 3, startCol: 0, endCol: 2)))
+        XCTAssertTrue(runs.contains(BlockRun(row: 0, startCol: 0, endCol: 2)))
+        XCTAssertTrue(runs.contains(BlockRun(row: 3, startCol: 0, endCol: 2)))
     }
 
     func testNonWaterBlocksDoNotFormRuns() {
@@ -230,5 +230,27 @@ final class PlacementTests: XCTestCase {
                         at: GridCell(col: c, row: 0), date: date)
         }
         XCTAssertTrue(world.waterRuns.isEmpty)
+    }
+
+    func testGardenRunsAreDetectedSeparately() {
+        var world = makeWorld()
+        for c in [2, 3, 4] {
+            world.place(designID: "garden", isCracked: false,
+                        at: GridCell(col: c, row: 0), date: date)
+        }
+        placeWater(&world, row: 2, cols: [0, 1, 2])
+        XCTAssertEqual(world.gardenRuns, [BlockRun(row: 0, startCol: 2, endCol: 4)])
+        XCTAssertEqual(world.waterRuns, [BlockRun(row: 2, startCol: 0, endCol: 2)])
+        // Garden blocks don't appear in water runs and vice versa.
+        XCTAssertFalse(world.gardenRuns.contains(BlockRun(row: 2, startCol: 0, endCol: 2)))
+    }
+
+    func testTwoGardenBlocksDoNotFlower() {
+        var world = makeWorld()
+        for c in [2, 3] {
+            world.place(designID: "garden", isCracked: false,
+                        at: GridCell(col: c, row: 0), date: date)
+        }
+        XCTAssertTrue(world.gardenRuns.isEmpty)
     }
 }
