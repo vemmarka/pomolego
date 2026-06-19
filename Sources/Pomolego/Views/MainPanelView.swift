@@ -261,13 +261,23 @@ struct MainPanelView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                Button(role: .destructive) {
-                    showAbandonConfirmation = true
-                } label: {
-                    Label("Abandon", systemImage: "xmark")
-                        .frame(maxWidth: .infinity)
+                if state.isInCancelGrace {
+                    Button {
+                        state.cancelFocus()
+                    } label: {
+                        Label("Cancel", systemImage: "arrow.uturn.backward")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button(role: .destructive) {
+                        showAbandonConfirmation = true
+                    } label: {
+                        Label("Abandon", systemImage: "xmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
             }
             .controlSize(.large)
         }
@@ -285,6 +295,9 @@ struct MainPanelView: View {
     }
 
     private var focusSubtitle: String {
+        if state.isInCancelGrace {
+            return "Cancel within \(Int(state.cancelGraceSeconds))s — no broken block"
+        }
         if case .focusPaused = state.phase {
             return "Paused — \(state.currentDesign.name) block in progress"
         }

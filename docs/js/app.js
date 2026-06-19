@@ -14,6 +14,7 @@ const CELL_H = 18;
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const MIN_FOCUS_MINUTES = 5;
 const MAX_FOCUS_MINUTES = 180;
+const CANCEL_GRACE_MS = 5000; // consequence-free cancel window after starting focus
 
 const engine = new TimerEngine();
 let settings = Store.loadSettings();
@@ -106,10 +107,26 @@ function startFocus() {
   engine.startFocus(focusMinutes * 60000);
   if (!targetCell) targetCell = W.defaultTarget(world());
   afterTransition();
+  // Re-render once the grace window closes so the Cancel button becomes Abandon.
+  setTimeout(() => { if (engine.isFocus()) render(); }, CANCEL_GRACE_MS + 50);
 }
 
 function pause() { engine.pause(); afterTransition(); }
 function resume() { engine.resume(); afterTransition(); }
+
+// Within CANCEL_GRACE_MS of starting, a focus session can be cancelled cleanly.
+function isInCancelGrace() {
+  return engine.isFocus() && currentSessionStart != null
+    && Date.now() - currentSessionStart < CANCEL_GRACE_MS;
+}
+
+// Discard a just-started focus session with no consequences (no cracked
+// block, no logged session).
+function cancelFocus() {
+  if (!engine.isFocus()) return;
+  engine.abandonFocus();
+  afterTransition();
+}
 
 function abandonFocus() {
   if (!engine.isFocus()) return;
@@ -737,17 +754,23 @@ function timerHead(design, isBreak) {
 function focusControls() {
   const wrap = el('div', { class: 'controls' });
   const paused = engine.phase.kind === 'focusPaused';
+  const grace = isInCancelGrace();
   const design = designForId(selectedDesignID);
+  const subtitle = grace
+    ? `Cancel within ${CANCEL_GRACE_MS / 1000}s — no broken block`
+    : (paused ? `Paused — ${design.name} block in progress` : `Building a ${design.name} block`);
   wrap.append(el('div', { class: 'timer-display' },
     timerHead(design, false),
-    el('div', { class: 'timer-sub' }, paused ? `Paused — ${design.name} block in progress` : `Building a ${design.name} block`),
+    el('div', { class: 'timer-sub' }, subtitle),
   ));
   const row = el('div', { class: 'btn-row' });
   row.append(
     paused
       ? el('button', { class: 'btn btn-primary', onclick: resume }, '▶ Resume')
       : el('button', { class: 'btn', onclick: pause }, '⏸ Pause'),
-    el('button', { class: 'btn btn-danger', onclick: confirmAbandon }, '✕ Abandon'),
+    grace
+      ? el('button', { class: 'btn', onclick: cancelFocus }, '↩ Cancel')
+      : el('button', { class: 'btn btn-danger', onclick: confirmAbandon }, '✕ Abandon'),
   );
   wrap.append(row);
   return wrap;

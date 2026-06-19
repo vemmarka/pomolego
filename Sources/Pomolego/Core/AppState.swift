@@ -156,6 +156,22 @@ final class AppState: ObservableObject {
     func pause() { engine.pause(); afterTransition() }
     func resume() { engine.resume(); afterTransition() }
 
+    /// Seconds after starting a focus session during which it can be cancelled
+    /// cleanly — no cracked block, no logged session.
+    let cancelGraceSeconds: TimeInterval = 5
+
+    var isInCancelGrace: Bool {
+        guard engine.phase.isFocus, let start = currentSessionStart else { return false }
+        return Date().timeIntervalSince(start) < cancelGraceSeconds
+    }
+
+    /// Discard a just-started focus session with no consequences.
+    func cancelFocus() {
+        guard engine.phase.isFocus else { return }
+        engine.abandonFocus()
+        afterTransition()
+    }
+
     func abandonFocus() {
         guard engine.phase.isFocus else { return }
         let cell = effectiveTarget

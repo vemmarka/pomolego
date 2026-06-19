@@ -83,6 +83,10 @@ validity (gravity rule, stacking, bounds, default targets).
 - **Pausing during a break** is supported, matching focus sessions.
 - "End break" early counts the break as taken (it resets the long-break
   cycle when it was a long break).
+- **5-second cancel grace**: within the first 5 seconds of a focus session
+  the action button is "Cancel" and discards the session with no
+  consequences (no cracked block, nothing logged). After that it becomes
+  "Abandon" with the usual confirmation and cracked-block consequence.
 - The menu bar icon is a LEGO-style brick with studs: template-rendered
   when idle, tinted in the active design's color during a focus session
   (a skyline silhouette was tried first but was unreadable at 16 pt).
