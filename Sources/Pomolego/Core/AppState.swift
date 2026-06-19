@@ -7,6 +7,13 @@ enum OverlayEvent {
     case breakOver
 }
 
+struct PlacementAnimation: Equatable {
+    let col: Int
+    let row: Int
+    let started: Date
+    let cracked: Bool
+}
+
 /// World editing (delete / move existing blocks) is available while idle.
 enum WorldEditMode: Equatable {
     case none
@@ -26,6 +33,8 @@ final class AppState: ObservableObject {
     @Published var targetCell: GridCell?
     @Published var unlockAnnouncement: BlockDesign?
     @Published private(set) var editMode: WorldEditMode = .none
+    /// One-shot landing animation for the most recently placed block.
+    @Published var placementAnim: PlacementAnimation?
     @Published var focusMinutes: Int {
         didSet { AppSettings.focusMinutes = focusMinutes }
     }
@@ -127,6 +136,7 @@ final class AppState: ObservableObject {
         if let cell {
             worldFile.current.place(designID: selectedDesignID, isCracked: false,
                                     at: cell, date: Date())
+            placementAnim = PlacementAnimation(col: cell.col, row: cell.row, started: Date(), cracked: false)
             store.saveWorld(worldFile)
         }
         logSession(kind: .focus, outcome: .completed, designID: selectedDesignID, cell: cell)
@@ -178,6 +188,7 @@ final class AppState: ObservableObject {
         if AppSettings.crackedBlockOnAbandon, let cell {
             worldFile.current.place(designID: BlockDesign.cracked.id, isCracked: true,
                                     at: cell, date: Date())
+            placementAnim = PlacementAnimation(col: cell.col, row: cell.row, started: Date(), cracked: true)
             store.saveWorld(worldFile)
         }
         engine.abandonFocus()

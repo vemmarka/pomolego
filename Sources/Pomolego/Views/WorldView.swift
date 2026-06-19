@@ -46,7 +46,7 @@ struct WorldView: View {
         TimelineView(.animation) { timeline in
             Canvas { context, size in
                 drawGroundAndGrid(context, size: size)
-                drawBlocks(context)
+                drawBlocks(context, date: timeline.date)
                 if case .moving(let source) = state.editMode {
                     drawMoveDestinations(context, from: source)
                 } else if canPlace {
@@ -309,10 +309,64 @@ struct WorldView: View {
         context.stroke(ground, with: .color(.secondary.opacity(0.35)), lineWidth: 1)
     }
 
-    private func drawBlocks(_ context: GraphicsContext) {
+    private static let placeDuration = 0.6
+
+    private func drawBlocks(_ context: GraphicsContext, date: Date) {
         for block in state.world.blocks {
-            BlockArt.draw(in: context, rect: rect(for: block.cell),
-                          designID: block.designID, isCracked: block.isCracked)
+            let r = rect(for: block.cell)
+            if let anim = state.placementAnim, anim.col == block.col, anim.row == block.row {
+                let p = date.timeIntervalSince(anim.started) / Self.placeDuration
+                if p >= 0, p < 1 {
+                    drawPlacingBlock(context, block: block, rect: r, p: p, cracked: anim.cracked)
+                    continue
+                }
+            }
+            BlockArt.draw(in: context, rect: r, designID: block.designID, isCracked: block.isCracked)
+        }
+    }
+
+    /// One-shot landing animation: drop from above, squash, settle, puff dust.
+    /// Reduce Motion → a simple fade-in.
+    private func drawPlacingBlock(_ context: GraphicsContext, block: PlacedBlock,
+                                  rect r: CGRect, p: Double, cracked: Bool) {
+        if reduceMotion {
+            var ctx = context
+            ctx.opacity = 0.4 + 0.6 * p
+            BlockArt.draw(in: ctx, rect: r, designID: block.designID, isCracked: cracked)
+            return
+        }
+        let fall = cracked ? 0.5 : 0.55
+        var offsetY: CGFloat = 0, sx: CGFloat = 1, sy: CGFloat = 1
+        if p < fall {
+            let e = p / fall
+            let ease = 1 - (1 - e) * (1 - e)
+            offsetY = -CGFloat(1 - ease) * r.height * (cracked ? 0.9 : 1.2)
+        } else {
+            let e = (p - fall) / (1 - fall)
+            let amt: CGFloat = cracked ? 0.10 : 0.18
+            sx = 1 + amt * CGFloat(1 - e)
+            sy = 1 - amt * CGFloat(1 - e)
+        }
+        var ctx = context
+        let cx = r.midX, by = r.maxY
+        ctx.translateBy(x: cx, y: by + offsetY)
+        ctx.scaleBy(x: sx, y: sy)
+        ctx.translateBy(x: -cx, y: -by)
+        BlockArt.draw(in: ctx, rect: r, designID: block.designID, isCracked: cracked)
+
+        if p >= fall {
+            let e = (p - fall) / (1 - fall)
+            if e < 0.6 {
+                let alpha = max(0, (0.5 - e) * 0.9)
+                for dx in [-0.42, 0.42, -0.18, 0.22] {
+                    let px = r.minX + r.width * CGFloat(0.5 + dx) + CGFloat(dx) * CGFloat(e) * 16
+                    let py = r.maxY - CGFloat(e) * 5
+                    let rad = 1.4 + CGFloat(e) * 2
+                    context.fill(Path(ellipseIn: CGRect(x: px - rad, y: py - rad,
+                                                        width: rad * 2, height: rad * 2)),
+                                 with: .color(.gray.opacity(alpha)))
+                }
+            }
         }
     }
 

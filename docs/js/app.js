@@ -15,6 +15,7 @@ const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const MIN_FOCUS_MINUTES = 5;
 const MAX_FOCUS_MINUTES = 180;
 const CANCEL_GRACE_MS = 5000; // consequence-free cancel window after starting focus
+const PLACE_DURATION = 600;   // ms: drop-and-settle animation when a block lands
 
 const engine = new TimerEngine();
 let settings = Store.loadSettings();
@@ -28,6 +29,7 @@ let editMode = { kind: 'none' }; // none | { kind:'selected', cell } | { kind:'m
 let unlockAnnouncement = null;
 let currentSessionStart = null;
 let overlayTimeout = null;
+let placement = null; // { col, row, start, cracked } — one-shot landing animation
 
 const world = () => worldFile.current;
 const totalBlocksBuilt = () => sessions.filter((s) => s.kind === 'focus' && s.outcome === 'completed').length;
@@ -82,6 +84,8 @@ function completeFocusSession() {
   const cell = effectiveTarget();
   if (cell) {
     W.placeBlock(world(), { designID: selectedDesignID, isCracked: false, col: cell.col, row: cell.row, placedAt: Date.now() });
+    placement = { col: cell.col, row: cell.row, start: performance.now(), cracked: false };
+    ensureAmbientLoop();
     Store.saveWorldFile(worldFile);
   }
   logSession({ kind: 'focus', outcome: 'completed', designID: selectedDesignID, cell });
@@ -133,6 +137,8 @@ function abandonFocus() {
   const cell = effectiveTarget();
   if (settings.crackedBlockOnAbandon && cell) {
     W.placeBlock(world(), { designID: 'cracked', isCracked: true, col: cell.col, row: cell.row, placedAt: Date.now() });
+    placement = { col: cell.col, row: cell.row, start: performance.now(), cracked: true };
+    ensureAmbientLoop();
     Store.saveWorldFile(worldFile);
   }
   engine.abandonFocus();
@@ -364,7 +370,13 @@ function drawWorld() {
 
   for (const b of world().blocks) {
     const r = cellRect(b.col, b.row);
-    drawBlock(ctx, r.x, r.y, r.w, r.h, b.designID, b.isCracked);
+    const p = placement && placement.col === b.col && placement.row === b.row
+      ? (performance.now() - placement.start) / PLACE_DURATION : null;
+    if (p != null && p < 1) {
+      drawPlacingBlock(b, r, p);
+    } else {
+      drawBlock(ctx, r.x, r.y, r.w, r.h, b.designID, b.isCracked);
+    }
   }
 
   const phase = engine.phase.kind;
@@ -661,8 +673,60 @@ function drawNeonLasers(t) {
   ctx.restore();
 }
 
+// One-shot landing animation: the block drops from above, squashes, settles,
+// and puffs a little dust. Reduce Motion → a simple fade-in.
+function drawPlacingBlock(b, r, p) {
+  if (prefersReducedMotion()) {
+    ctx.save();
+    ctx.globalAlpha = 0.4 + 0.6 * p;
+    drawBlock(ctx, r.x, r.y, r.w, r.h, b.designID, b.isCracked);
+    ctx.restore();
+    return;
+  }
+  const cracked = b.isCracked;
+  const fall = cracked ? 0.5 : 0.55; // cracked lands sooner, with a smaller bounce (a thud)
+  let offsetY = 0;
+  let sx = 1;
+  let sy = 1;
+  if (p < fall) {
+    const e = p / fall;
+    const ease = 1 - (1 - e) * (1 - e);
+    offsetY = -(1 - ease) * r.h * (cracked ? 0.9 : 1.2);
+  } else {
+    const e = (p - fall) / (1 - fall);
+    const amt = cracked ? 0.10 : 0.18;
+    sx = 1 + amt * (1 - e);
+    sy = 1 - amt * (1 - e);
+  }
+  ctx.save();
+  const cx = r.x + r.w / 2;
+  const by = r.y + r.h;
+  ctx.translate(cx, by + offsetY);
+  ctx.scale(sx, sy);
+  ctx.translate(-cx, -by);
+  drawBlock(ctx, r.x, r.y, r.w, r.h, b.designID, b.isCracked);
+  ctx.restore();
+  if (p >= fall) {
+    const e = (p - fall) / (1 - fall);
+    if (e < 0.6) {
+      ctx.fillStyle = `rgba(150,150,150,${Math.max(0, (0.5 - e) * 0.9)})`;
+      for (const dx of [-0.42, 0.42, -0.18, 0.22]) {
+        const px = r.x + r.w * (0.5 + dx) + dx * e * 16;
+        const py = r.y + r.h - e * 5;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.4 + e * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+}
+
 // Continuous redraw loop, alive only while there's animated life on the board.
+function placementActive() {
+  return placement != null && performance.now() - placement.start < PLACE_DURATION;
+}
 function hasAmbientLife() {
+  if (placementActive()) return true;
   if (W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0
       || W.neonRuns(world()).length > 0) return true;
   return world().blocks.some((b) => !b.isCracked && (b.designID === 'lava' || b.designID === 'blossom'));
