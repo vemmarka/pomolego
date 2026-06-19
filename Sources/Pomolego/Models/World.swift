@@ -150,15 +150,46 @@ struct World: Codable, Equatable {
         return runs
     }
 
-    /// Water runs grow a patrolling fish; garden runs grow flowers.
+    /// Maximal vertical runs of >= minLength contiguous blocks of the given
+    /// design in the same column.
+    func verticalRuns(ofDesign designID: String, minLength: Int = 3) -> [ColumnRun] {
+        var byCol: [Int: [Int]] = [:]
+        for b in blocks where b.designID == designID && !b.isCracked {
+            byCol[b.col, default: []].append(b.row)
+        }
+        var runs: [ColumnRun] = []
+        for (col, unsorted) in byCol {
+            let rows = unsorted.sorted()
+            var start = rows[0]
+            var prev = rows[0]
+            for r in rows.dropFirst() {
+                if r == prev + 1 { prev = r; continue }
+                if prev - start + 1 >= minLength { runs.append(ColumnRun(col: col, startRow: start, endRow: prev)) }
+                start = r
+                prev = r
+            }
+            if prev - start + 1 >= minLength { runs.append(ColumnRun(col: col, startRow: start, endRow: prev)) }
+        }
+        return runs
+    }
+
+    /// Water runs grow a patrolling fish; garden runs grow flowers; a vertical
+    /// stack of neon throws a laser party.
     var waterRuns: [BlockRun] { horizontalRuns(ofDesign: "water") }
     var gardenRuns: [BlockRun] { horizontalRuns(ofDesign: "garden") }
+    var neonRuns: [ColumnRun] { verticalRuns(ofDesign: "neon") }
 }
 
 struct BlockRun: Equatable {
     let row: Int
     let startCol: Int
     let endCol: Int
+}
+
+struct ColumnRun: Equatable {
+    let col: Int
+    let startRow: Int
+    let endRow: Int
 }
 
 struct ArchivedWorld: Codable, Equatable {

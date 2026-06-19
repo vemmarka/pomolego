@@ -382,6 +382,7 @@ function drawWorld() {
   drawFlowers(performance.now() / 1000);
   drawLavaEmbers(performance.now() / 1000);
   drawBlossomPetals(performance.now() / 1000);
+  drawNeonLasers(performance.now() / 1000);
 }
 
 function drawValidCells() {
@@ -614,9 +615,56 @@ function drawBlossomPetals(t) {
   }
 }
 
+// A vertical stack of 3+ neon blocks throws a laser party: rotating, colour-
+// cycling beams with an additive glow. Eased off under Reduce Motion.
+const NEON_PALETTE = ['rgb(255,80,235)', 'rgb(80,235,255)', 'rgb(140,255,120)',
+                      'rgb(255,230,90)', 'rgb(180,120,255)', 'rgb(255,140,70)'];
+
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function drawNeonLasers(t) {
+  const runs = W.neonRuns(world());
+  if (!runs.length) return;
+  const reduce = prefersReducedMotion();
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter'; // additive glow where beams cross
+  const beams = 6;
+  const baseLen = CELL_H * 3.4;
+  for (const run of runs) {
+    const ox = run.col * CELL_W + CELL_W / 2;
+    const oyTop = (W.ROWS - 1 - run.endRow) * CELL_H;
+    const oyBot = (W.ROWS - 1 - run.startRow) * CELL_H + CELL_H;
+    const oy = (oyTop + oyBot) / 2;
+    const seed = run.col * 1.3 + run.startRow * 0.7;
+    for (let k = 0; k < beams; k++) {
+      const dir = k % 2 === 0 ? 1 : -1;
+      const angle = (k / beams) * Math.PI * 2 + seed + (reduce ? 0 : t * 0.6 * dir);
+      const len = baseLen * (reduce ? 1 : 0.8 + 0.2 * Math.sin(t * 3 + k));
+      const ex = ox + Math.cos(angle) * len;
+      const ey = oy + Math.sin(angle) * len;
+      const color = NEON_PALETTE[(k + (reduce ? 0 : Math.floor(t))) % NEON_PALETTE.length];
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = reduce ? 0.16 : 0.22;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.globalAlpha = reduce ? 0.45 : 0.7;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex, ey); ctx.stroke();
+    }
+    ctx.globalAlpha = reduce ? 0.5 : Math.max(0, 0.5 + 0.4 * Math.sin(t * 5));
+    ctx.fillStyle = 'rgb(255,255,255)';
+    ctx.beginPath(); ctx.arc(ox, oy, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 // Continuous redraw loop, alive only while there's animated life on the board.
 function hasAmbientLife() {
-  if (W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0) return true;
+  if (W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0
+      || W.neonRuns(world()).length > 0) return true;
   return world().blocks.some((b) => !b.isCracked && (b.designID === 'lava' || b.designID === 'blossom'));
 }
 let ambientRAF = null;

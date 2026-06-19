@@ -5,6 +5,7 @@ import SwiftUI
 /// placement is possible; tapping one sets the dashed ghost target.
 struct WorldView: View {
     @EnvironmentObject var state: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let cellWidth: CGFloat = 28
     static let cellHeight: CGFloat = 20
@@ -58,6 +59,7 @@ struct WorldView: View {
                 drawFlowers(context, date: timeline.date)
                 drawLavaEmbers(context, date: timeline.date)
                 drawBlossomPetals(context, date: timeline.date)
+                drawNeonLasers(context, date: timeline.date, reduceMotion: reduceMotion)
             }
         }
         .onTapGesture(coordinateSpace: .local) { location in
@@ -172,6 +174,48 @@ struct WorldView: View {
                 ctx.fill(Path(ellipseIn: CGRect(x: -2.2, y: -1.1, width: 4.4, height: 2.2)),
                          with: .color(Color(red: 0.97, green: 0.78, blue: 0.86).opacity((1 - ph) * 0.85 + 0.1)))
             }
+        }
+    }
+
+    private static let neonPalette: [Color] = [
+        Color(red: 1.0, green: 0.31, blue: 0.92), Color(red: 0.31, green: 0.92, blue: 1.0),
+        Color(red: 0.55, green: 1.0, blue: 0.47), Color(red: 1.0, green: 0.90, blue: 0.35),
+        Color(red: 0.71, green: 0.47, blue: 1.0), Color(red: 1.0, green: 0.55, blue: 0.27),
+    ]
+
+    /// A vertical stack of 3+ neon blocks throws a laser party: rotating,
+    /// colour-cycling beams with an additive glow. Eased off under Reduce Motion.
+    private func drawNeonLasers(_ context: GraphicsContext, date: Date, reduceMotion: Bool) {
+        let runs = state.world.neonRuns
+        guard !runs.isEmpty else { return }
+        let t = date.timeIntervalSinceReferenceDate
+        var ctx = context
+        ctx.blendMode = .plusLighter
+        let beams = 6
+        let baseLen = Self.cellHeight * 3.4
+        for run in runs {
+            let ox = CGFloat(run.col) * Self.cellWidth + Self.cellWidth / 2
+            let oyTop = CGFloat(World.rows - 1 - run.endRow) * Self.cellHeight
+            let oyBot = CGFloat(World.rows - 1 - run.startRow) * Self.cellHeight + Self.cellHeight
+            let oy = (oyTop + oyBot) / 2
+            let seed = Double(run.col) * 1.3 + Double(run.startRow) * 0.7
+            for k in 0..<beams {
+                let dir: Double = k % 2 == 0 ? 1 : -1
+                let angle = Double(k) / Double(beams) * 2 * .pi + seed + (reduceMotion ? 0 : t * 0.6 * dir)
+                let lenPulse = reduceMotion ? 1 : 0.8 + 0.2 * sin(t * 3 + Double(k))
+                let len = baseLen * CGFloat(lenPulse)
+                let ex = ox + CGFloat(cos(angle)) * len
+                let ey = oy + CGFloat(sin(angle)) * len
+                let color = Self.neonPalette[(k + (reduceMotion ? 0 : Int(t))) % Self.neonPalette.count]
+                var beam = Path()
+                beam.move(to: CGPoint(x: ox, y: oy))
+                beam.addLine(to: CGPoint(x: ex, y: ey))
+                ctx.stroke(beam, with: .color(color.opacity(reduceMotion ? 0.16 : 0.22)), lineWidth: 4)
+                ctx.stroke(beam, with: .color(color.opacity(reduceMotion ? 0.45 : 0.7)), lineWidth: 1.4)
+            }
+            let coreAlpha = reduceMotion ? 0.5 : max(0, 0.5 + 0.4 * sin(t * 5))
+            ctx.fill(Path(ellipseIn: CGRect(x: ox - 2.5, y: oy - 2.5, width: 5, height: 5)),
+                     with: .color(.white.opacity(coreAlpha)))
         }
     }
 

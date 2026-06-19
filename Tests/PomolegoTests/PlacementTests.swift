@@ -253,4 +253,37 @@ final class PlacementTests: XCTestCase {
         }
         XCTAssertTrue(world.gardenRuns.isEmpty)
     }
+
+    // MARK: - Neon vertical runs (laser party)
+
+    private func placeColumn(_ world: inout World, col: Int, rows: [Int], design: String) {
+        for r in rows {
+            world.place(designID: design, isCracked: false,
+                        at: GridCell(col: col, row: r), date: date)
+        }
+    }
+
+    func testThreeVerticalNeonFormsARun() {
+        var world = makeWorld()
+        placeColumn(&world, col: 5, rows: [0, 1, 2], design: "neon")
+        XCTAssertEqual(world.neonRuns, [ColumnRun(col: 5, startRow: 0, endRow: 2)])
+    }
+
+    func testTwoVerticalNeonIsNotEnough() {
+        var world = makeWorld()
+        placeColumn(&world, col: 5, rows: [0, 1], design: "neon")
+        XCTAssertTrue(world.neonRuns.isEmpty)
+    }
+
+    func testHorizontalNeonDoesNotPartyAndVerticalGapBreaksTheRun() {
+        var world = makeWorld()
+        // Horizontal row of neon: no vertical run.
+        for c in [0, 1, 2] {
+            world.place(designID: "neon", isCracked: false,
+                        at: GridCell(col: c, row: 7), date: date)
+        }
+        // Vertical neon with a gap: only the contiguous part of length >= 3 counts.
+        placeColumn(&world, col: 10, rows: [0, 1, 2, 4, 5], design: "neon") // gap at row 3
+        XCTAssertEqual(world.neonRuns, [ColumnRun(col: 10, startRow: 0, endRow: 2)])
+    }
 }

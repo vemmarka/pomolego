@@ -141,9 +141,36 @@ export function horizontalRuns(world, designID, minLength = 3) {
   return runs;
 }
 
-// Water runs grow a swimming fish; garden runs grow flowers.
+// Maximal vertical runs of >= minLength contiguous blocks of the given design
+// in the same column. Each run is { col, startRow, endRow }.
+export function verticalRuns(world, designID, minLength = 3) {
+  const byCol = new Map();
+  for (const b of world.blocks) {
+    if (b.designID !== designID || b.isCracked) continue;
+    if (!byCol.has(b.col)) byCol.set(b.col, []);
+    byCol.get(b.col).push(b.row);
+  }
+  const runs = [];
+  for (const [col, rows] of byCol) {
+    rows.sort((a, b) => a - b);
+    let start = rows[0];
+    let prev = rows[0];
+    for (let i = 1; i <= rows.length; i++) {
+      const r = rows[i];
+      if (r === prev + 1) { prev = r; continue; }
+      if (prev - start + 1 >= minLength) runs.push({ col, startRow: start, endRow: prev });
+      start = r;
+      prev = r;
+    }
+  }
+  return runs;
+}
+
+// Water runs grow a swimming fish; garden runs grow flowers; a vertical stack
+// of neon throws a laser party.
 export function waterRuns(world, minLength = 3) { return horizontalRuns(world, 'water', minLength); }
 export function gardenRuns(world, minLength = 3) { return horizontalRuns(world, 'garden', minLength); }
+export function neonRuns(world, minLength = 3) { return verticalRuns(world, 'neon', minLength); }
 
 export function builtCount(world) {
   return world.blocks.filter((b) => !b.isCracked).length;
