@@ -380,6 +380,8 @@ function drawWorld() {
   drawInProgress();
   drawFish(performance.now() / 1000);
   drawFlowers(performance.now() / 1000);
+  drawLavaEmbers(performance.now() / 1000);
+  drawBlossomPetals(performance.now() / 1000);
 }
 
 function drawValidCells() {
@@ -562,10 +564,60 @@ function flowerAt(x, rowTop, col, t, ageSec) {
   ctx.fill();
 }
 
-// Continuous redraw loop, alive only while there's animated life (water or
-// flowering garden) on the board.
+// Every Lava block glows with a gentle pulse and throws embers upward.
+function drawLavaEmbers(t) {
+  for (const b of world().blocks) {
+    if (b.designID !== 'lava' || b.isCracked) continue;
+    const x0 = b.col * CELL_W;
+    const y0 = (W.ROWS - 1 - b.row) * CELL_H;
+    const pulse = 0.12 + 0.10 * (0.5 + 0.5 * Math.sin(t * 2 + b.col + b.row));
+    ctx.fillStyle = `rgba(255, 90, 30, ${pulse})`;
+    roundRect(ctx, x0, y0, CELL_W, CELL_H, 2.5);
+    ctx.fill();
+    const seed = b.col * 1.7 + b.row * 0.9;
+    for (let k = 0; k < 3; k++) {
+      const period = 1.8 + (k % 2) * 0.6;
+      const ph = (t / period + k * 0.4 + seed) % 1; // 0 surface → 1 risen
+      const ex = x0 + CELL_W * (0.25 + 0.5 * ((k * 0.37 + seed) % 1)) + Math.sin(t * 3 + k) * 1.5;
+      const ey = y0 - ph * CELL_H * 0.8; // float up above the block
+      const r = 1.3 * (1 - ph) + 0.4;
+      ctx.fillStyle = `rgba(255, ${Math.round(170 - ph * 70)}, 40, ${(1 - ph) * 0.9})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// Every Blossom block sheds petals that drift and sway downward.
+function drawBlossomPetals(t) {
+  for (const b of world().blocks) {
+    if (b.designID !== 'blossom' || b.isCracked) continue;
+    const x0 = b.col * CELL_W;
+    const yTop = (W.ROWS - 1 - b.row) * CELL_H;
+    const seed = b.col * 2.3 + b.row * 1.1;
+    for (let k = 0; k < 2; k++) {
+      const period = 3.2 + (k % 2) * 0.8;
+      const ph = (t / period + k * 0.5 + seed) % 1; // 0 top → 1 bottom
+      const startX = x0 + CELL_W * (0.3 + 0.4 * ((k * 0.6 + seed) % 1));
+      const px = startX + Math.sin(t * 1.5 + k + seed) * 4; // sway
+      const py = yTop + ph * CELL_H * 1.6; // fall ~1.6 cells
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(t * 1.2 + k);
+      ctx.fillStyle = `rgba(248, 200, 220, ${(1 - ph) * 0.85 + 0.1})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 2.2, 1.1, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// Continuous redraw loop, alive only while there's animated life on the board.
 function hasAmbientLife() {
-  return W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0;
+  if (W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0) return true;
+  return world().blocks.some((b) => !b.isCracked && (b.designID === 'lava' || b.designID === 'blossom'));
 }
 let ambientRAF = null;
 function ambientLoop() {

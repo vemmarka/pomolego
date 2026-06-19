@@ -56,6 +56,8 @@ struct WorldView: View {
                 drawInProgress(context)
                 drawFish(context, date: timeline.date)
                 drawFlowers(context, date: timeline.date)
+                drawLavaEmbers(context, date: timeline.date)
+                drawBlossomPetals(context, date: timeline.date)
             }
         }
         .onTapGesture(coordinateSpace: .local) { location in
@@ -123,6 +125,53 @@ struct WorldView: View {
             context.fill(Path(ellipseIn: CGRect(x: bx - radius, y: by - radius,
                                                 width: radius * 2, height: radius * 2)),
                          with: .color(.white.opacity(alpha)))
+        }
+    }
+
+    /// Every Lava block glows with a gentle pulse and throws embers upward.
+    private func drawLavaEmbers(_ context: GraphicsContext, date: Date) {
+        let t = date.timeIntervalSinceReferenceDate
+        for b in state.world.blocks where b.designID == "lava" && !b.isCracked {
+            let x0 = CGFloat(b.col) * Self.cellWidth
+            let y0 = CGFloat(World.rows - 1 - b.row) * Self.cellHeight
+            let pulse = 0.12 + 0.10 * (0.5 + 0.5 * sin(t * 2 + Double(b.col) + Double(b.row)))
+            context.fill(Path(roundedRect: CGRect(x: x0, y: y0, width: Self.cellWidth,
+                                                  height: Self.cellHeight), cornerRadius: 2.5),
+                         with: .color(Color(red: 1.0, green: 0.35, blue: 0.12).opacity(pulse)))
+            let seed = Double(b.col) * 1.7 + Double(b.row) * 0.9
+            for k in 0..<3 {
+                let period = 1.8 + Double(k % 2) * 0.6
+                let ph = (t / period + Double(k) * 0.4 + seed).truncatingRemainder(dividingBy: 1)
+                let ex = x0 + Self.cellWidth * CGFloat(0.25 + 0.5 * ((Double(k) * 0.37 + seed)
+                    .truncatingRemainder(dividingBy: 1))) + CGFloat(sin(t * 3 + Double(k))) * 1.5
+                let ey = y0 - CGFloat(ph) * Self.cellHeight * 0.8
+                let r = 1.3 * (1 - CGFloat(ph)) + 0.4
+                context.fill(Path(ellipseIn: CGRect(x: ex - r, y: ey - r, width: r * 2, height: r * 2)),
+                             with: .color(Color(red: 1.0, green: 0.66, blue: 0.16).opacity((1 - ph) * 0.9)))
+            }
+        }
+    }
+
+    /// Every Blossom block sheds petals that drift and sway downward.
+    private func drawBlossomPetals(_ context: GraphicsContext, date: Date) {
+        let t = date.timeIntervalSinceReferenceDate
+        for b in state.world.blocks where b.designID == "blossom" && !b.isCracked {
+            let x0 = CGFloat(b.col) * Self.cellWidth
+            let yTop = CGFloat(World.rows - 1 - b.row) * Self.cellHeight
+            let seed = Double(b.col) * 2.3 + Double(b.row) * 1.1
+            for k in 0..<2 {
+                let period = 3.2 + Double(k % 2) * 0.8
+                let ph = (t / period + Double(k) * 0.5 + seed).truncatingRemainder(dividingBy: 1)
+                let startX = x0 + Self.cellWidth * CGFloat(0.3 + 0.4 * ((Double(k) * 0.6 + seed)
+                    .truncatingRemainder(dividingBy: 1)))
+                let px = startX + CGFloat(sin(t * 1.5 + Double(k) + seed)) * 4
+                let py = yTop + CGFloat(ph) * Self.cellHeight * 1.6
+                var ctx = context
+                ctx.translateBy(x: px, y: py)
+                ctx.rotate(by: .radians(t * 1.2 + Double(k)))
+                ctx.fill(Path(ellipseIn: CGRect(x: -2.2, y: -1.1, width: 4.4, height: 2.2)),
+                         with: .color(Color(red: 0.97, green: 0.78, blue: 0.86).opacity((1 - ph) * 0.85 + 0.1)))
+            }
         }
     }
 
