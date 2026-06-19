@@ -67,10 +67,9 @@ struct WorldView: View {
     }
 
     // Time-driven so motion stays smooth. Runs of >= 5 water blocks get
-    // bubbles, occasional fish loops, and a school passing through.
+    // rising bubbles and occasional fish loops.
     private static let richWater = 5
     private static let loopPeriod = 10.0, loopDuration = 1.3
-    private static let schoolPeriod = 19.0, schoolDuration = 4.0
     private static let fishColor = Color(red: 1.0, green: 0.54, blue: 0.24)
 
     /// A fish patrols each run of >= 3 contiguous water blocks (sine motion,
@@ -105,8 +104,6 @@ struct WorldView: View {
                 }
             }
             drawFishShape(context, at: CGPoint(x: x, y: y), facingRight: cos(angle) > 0)
-
-            if rich { drawSchool(context, minX: minX, maxX: maxX, rowTop: rowTop, t: t, seed: seed) }
         }
     }
 
@@ -126,22 +123,6 @@ struct WorldView: View {
             context.fill(Path(ellipseIn: CGRect(x: bx - radius, y: by - radius,
                                                 width: radius * 2, height: radius * 2)),
                          with: .color(.white.opacity(alpha)))
-        }
-    }
-
-    private func drawSchool(_ context: GraphicsContext, minX: CGFloat, maxX: CGFloat,
-                            rowTop: CGFloat, t: Double, seed: Double) {
-        let local = (t + seed * 5).truncatingRemainder(dividingBy: Self.schoolPeriod)
-        guard local <= Self.schoolDuration else { return }
-        let p = CGFloat(local / Self.schoolDuration)
-        let dir: CGFloat = Int((t + seed * 5) / Self.schoolPeriod) % 2 == 0 ? 1 : -1
-        let span = maxX - minX + 36
-        let headX = dir == 1 ? minX - 18 + p * span : maxX + 18 - p * span
-        let cy = rowTop + Self.cellHeight * 0.4
-        let school = Color(red: 1.0, green: 0.70, blue: 0.38)
-        for (dx, dy) in [(0.0, 0.0), (-8.0, -4.0), (-8.0, 4.0), (-16.0, -2.0), (-16.0, 5.0)] {
-            drawFishShape(context, at: CGPoint(x: headX + dir * CGFloat(dx), y: cy + CGFloat(dy)),
-                          facingRight: dir == 1, scale: 0.5, color: school)
         }
     }
 

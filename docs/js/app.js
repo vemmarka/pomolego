@@ -434,15 +434,13 @@ function drawMoveDestinations(cell) {
 }
 
 // Time-driven (deterministic) so motion stays smooth frame to frame.
-const RICH_WATER = 5;        // run length that unlocks bubbles + loops + schools
+const RICH_WATER = 5;        // run length that unlocks bubbles + loops
 const LOOP_PERIOD = 10;      // s between the main fish's little loops
 const LOOP_DURATION = 1.3;   // s the loop takes
-const SCHOOL_PERIOD = 19;    // s between passing schools
-const SCHOOL_DURATION = 4;   // s a school takes to cross
 
 // A fish patrols each run of >= 3 contiguous water blocks (gentle sine motion,
-// slowing at each turn). Runs of >= 5 also get bubbles, occasional loops, and
-// a school of fish passing through from time to time.
+// slowing at each turn). Runs of >= 5 also get rising bubbles and occasional
+// little loops.
 function drawFish(tSeconds) {
   W.waterRuns(world()).forEach((run, i) => {
     const rowTop = (W.ROWS - 1 - run.row) * CELL_H;
@@ -472,8 +470,6 @@ function drawFish(tSeconds) {
       }
     }
     fishShape(fx, fy, Math.cos(angle) > 0);
-
-    if (rich) drawSchool(tSeconds, minX, maxX, rowTop, seed);
   });
 }
 
@@ -492,19 +488,6 @@ function drawBubbles(t, run, rowTop, seed) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-}
-
-function drawSchool(t, minX, maxX, rowTop, seed) {
-  const local = (t + seed * 5) % SCHOOL_PERIOD;
-  if (local > SCHOOL_DURATION) return;
-  const p = local / SCHOOL_DURATION;
-  const dir = Math.floor((t + seed * 5) / SCHOOL_PERIOD) % 2 === 0 ? 1 : -1;
-  const span = maxX - minX + 36;
-  const headX = dir === 1 ? minX - 18 + p * span : maxX + 18 - p * span;
-  const cy = rowTop + CELL_H * 0.4;
-  for (const [dx, dy] of [[0, 0], [-8, -4], [-8, 4], [-16, -2], [-16, 5]]) {
-    fishShape(headX + dir * dx, cy + dy, dir === 1, 0.5, 'rgb(255, 178, 96)');
-  }
 }
 
 function fishShape(x, y, facingRight, scale = 1, color = 'rgb(255, 138, 60)') {

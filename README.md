@@ -54,8 +54,8 @@ validity (gravity rule, stacking, bounds, default targets).
   (statistics keep all history).
 - **Living world** — contiguous horizontal runs of certain designs come
   alive. 3+ **Water** blocks → a fish swims back and forth; at 5+ it also
-  gets rising bubbles, occasional fish loops, and a passing school. 3+
-  **Garden** blocks → flowers sprout on top, growing in and swaying. All
+  gets rising bubbles and occasional fish loops. 3+ **Garden** blocks →
+  flowers sprout on top, growing in and swaying. All
   time-driven and drawn programmatically; the web version animates only
   while there's living scenery on the board.
 - **Designs** — 19 designs unlock as your all-time completed block count
