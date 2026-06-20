@@ -1156,7 +1156,7 @@ function openAlbum() {
   body.innerHTML = '';
 
   body.append(el('p', { class: 'setting-note' },
-    'Snapshots of fields you have saved. Start a fresh canvas to add the current one here.'));
+    'Click a saved field to open it and keep building. Your current field is saved to the album first.'));
 
   const freshBtn = el('button', {
     class: 'btn btn-danger', onclick: () => {
@@ -1171,10 +1171,12 @@ function openAlbum() {
   body.append(el('div', { class: 'album-actions' }, freshBtn));
 
   const grid = el('div', { class: 'album-grid' });
-  grid.append(albumCard(world().blocks, 'Current', null));
-  [...worldFile.archived].reverse().forEach((a) => {
-    grid.append(albumCard(a.blocks, 'Saved', a.archivedAt));
-  });
+  grid.append(albumCard(world().blocks, 'Current', null, null));
+  // Newest archived first; keep the original index for loading.
+  for (let i = worldFile.archived.length - 1; i >= 0; i--) {
+    const a = worldFile.archived[i];
+    grid.append(albumCard(a.blocks, 'Saved', a.archivedAt, i));
+  }
   body.append(grid);
 
   if (worldFile.archived.length === 0) {
@@ -1185,7 +1187,7 @@ function openAlbum() {
   $('album-modal').hidden = false;
 }
 
-function albumCard(blocks, label, dateMs) {
+function albumCard(blocks, label, dateMs, archivedIndex) {
   const thumbW = 220;
   const cw = thumbW / W.COLUMNS;
   const ch = cw * (CELL_H / CELL_W);
@@ -1194,12 +1196,34 @@ function albumCard(blocks, label, dateMs) {
   const cracked = blocks.filter((b) => b.isCracked).length;
   let sub = dateMs ? `${new Date(dateMs).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} · ` : '';
   sub += `${built} block${built === 1 ? '' : 's'}${cracked ? ` · ${cracked} cracked` : ''}`;
-  const card = el('div', { class: 'album-card' },
+  const clickable = archivedIndex != null;
+  const card = el('div', { class: `album-card ${clickable ? 'clickable' : ''}` },
     thumb,
     el('div', { class: 'album-label' }, label),
     el('div', { class: 'album-sub' }, sub));
+  if (clickable) {
+    card.title = 'Open this field and keep building';
+    card.onclick = () => loadArchivedField(archivedIndex);
+  }
   setTimeout(() => drawThumb(thumb, blocks, cw, ch), 0);
   return card;
+}
+
+// Open an archived field as the active canvas (saving the current one back to
+// the album first, unless empty) so the user can keep building on it.
+function loadArchivedField(archivedIndex) {
+  const selected = worldFile.archived[archivedIndex];
+  if (!selected) return;
+  worldFile.archived.splice(archivedIndex, 1);
+  if (world().blocks.length > 0) {
+    worldFile.archived.push({ archivedAt: Date.now(), blocks: world().blocks });
+  }
+  worldFile.current = { blocks: selected.blocks };
+  targetCell = null;
+  editMode = { kind: 'none' };
+  Store.saveWorldFile(worldFile);
+  $('album-modal').hidden = true;
+  render();
 }
 
 function drawThumb(canvasEl, blocks, cw, ch) {

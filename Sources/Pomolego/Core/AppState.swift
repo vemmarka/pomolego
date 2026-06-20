@@ -305,6 +305,24 @@ final class AppState: ObservableObject {
         store.saveWorld(worldFile)
     }
 
+    /// Open an archived field as the active canvas so the user can keep
+    /// building on it. The current field is saved back into the album first
+    /// (unless empty), so this is a non-destructive switch.
+    func loadArchivedField(_ archived: ArchivedWorld) {
+        guard let index = worldFile.archived.firstIndex(where: { $0.archivedAt == archived.archivedAt }) else { return }
+        let selected = worldFile.archived.remove(at: index)
+        if !worldFile.current.blocks.isEmpty {
+            worldFile.archived.append(ArchivedWorld(archivedAt: Date(),
+                                                    blocks: worldFile.current.blocks))
+        }
+        var restored = World()
+        restored.blocks = selected.blocks
+        worldFile.current = restored
+        targetCell = nil
+        editMode = .none
+        store.saveWorld(worldFile)
+    }
+
     private func afterTransition() {
         phase = engine.phase
         remaining = engine.remaining()

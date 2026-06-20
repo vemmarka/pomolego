@@ -6,6 +6,9 @@ struct AlbumView: View {
     @EnvironmentObject var state: AppState
     @State private var confirmingFresh = false
 
+    /// Called after a saved field is opened, so the host can close the window.
+    var onPick: () -> Void = {}
+
     private let columns = [GridItem(.adaptive(minimum: 230), spacing: 16)]
 
     var body: some View {
@@ -16,6 +19,15 @@ struct AlbumView: View {
                     AlbumCard(blocks: state.world.blocks, title: "Current", date: nil)
                     ForEach(state.worldFile.archived.reversed(), id: \.archivedAt) { archived in
                         AlbumCard(blocks: archived.blocks, title: "Saved", date: archived.archivedAt)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                state.loadArchivedField(archived)
+                                onPick()
+                            }
+                            .onHover { inside in
+                                if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                            }
+                            .help("Open this field and keep building")
                     }
                 }
                 if state.worldFile.archived.isEmpty {
@@ -35,7 +47,7 @@ struct AlbumView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Album").font(.title2.bold())
-                Text("Snapshots of fields you've saved.")
+                Text("Click a saved field to open it and keep building.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()

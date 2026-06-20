@@ -256,7 +256,10 @@ body {
   background: rgba(127,127,127,0.06);
   border: 1px solid var(--border);
   border-radius: 10px; padding: 8px;
+  transition: border-color 0.12s, transform 0.12s;
 }
+.album-card.clickable { cursor: pointer; }
+.album-card.clickable:hover { border-color: var(--accent); transform: translateY(-2px); }
 .album-thumb {
   width: 100%; height: auto; display: block;
   border-radius: 6px; background: var(--panel);

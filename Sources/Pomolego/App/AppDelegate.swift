@@ -206,7 +206,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.performClose(nil)
         if albumWindow == nil {
             let hosting = NSHostingController(
-                rootView: AlbumView().environmentObject(appState))
+                rootView: AlbumView(onPick: { [weak self] in self?.albumWindow?.close() })
+                    .environmentObject(appState))
             let window = NSWindow(contentViewController: hosting)
             window.title = "Pomolego Album"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
