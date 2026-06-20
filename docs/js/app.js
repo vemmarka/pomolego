@@ -1255,6 +1255,7 @@ function openStats() {
       ['Focus minutes', s.focusMinutesToday],
       ['Abandoned', s.abandonedToday],
       ['Breaks taken', s.breaksToday],
+      ['Breaks skipped', s.breaksSkippedToday],
     ]),
   ));
 
@@ -1277,7 +1278,8 @@ function openStats() {
       ['Blocks', s.totalBlocks],
       ['Focus hours', s.totalFocusHours.toFixed(1)],
       ['Completion rate', s.completionRateText],
-    ], 3),
+      ['Breaks skipped', s.breaksSkipped],
+    ], 4),
   ));
 
   const collection = el('div', { class: 'stats-section' },
@@ -1298,8 +1300,8 @@ function openStats() {
   $('stats-modal').hidden = false;
 }
 
-function statCards(items, cols = 4) {
-  const grid = el('div', { class: `stat-cards cards-${cols}` });
+function statCards(items, cols = null) {
+  const grid = el('div', { class: `stat-cards ${cols ? `cards-${cols}` : ''}` });
   for (const [label, value] of items) {
     grid.append(el('div', { class: 'stat-card' },
       el('div', { class: 'stat-value' }, String(value)),

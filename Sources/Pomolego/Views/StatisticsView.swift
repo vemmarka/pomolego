@@ -42,6 +42,7 @@ struct StatisticsView: View {
                 statCard("Focus minutes", "\(stats.focusMinutesToday)")
                 statCard("Abandoned", "\(stats.abandonedToday)")
                 statCard("Breaks taken", "\(stats.breaksToday)")
+                statCard("Breaks skipped", "\(stats.breaksSkippedToday)")
             }
         }
     }
@@ -116,6 +117,7 @@ struct StatisticsView: View {
                 statCard("Blocks", "\(stats.totalBlocks)")
                 statCard("Focus hours", String(format: "%.1f", stats.totalFocusHours))
                 statCard("Completion rate", stats.completionRateText)
+                statCard("Breaks skipped", "\(stats.breaksSkipped)")
             }
         }
     }
@@ -171,6 +173,8 @@ private struct Statistics {
     let focusMinutesToday: Int
     let abandonedToday: Int
     let breaksToday: Int
+    let breaksSkippedToday: Int
+    let breaksSkipped: Int
     let last14Days: [DayMinutes]
     let designCounts: [DesignCount]
     let outcomesByDay: [OutcomeDay]
@@ -187,11 +191,14 @@ private struct Statistics {
         blocksToday = completed.filter { calendar.isDate($0.endedAt, inSameDayAs: today) }.count
         focusMinutesToday = sessions.focusMinutes(on: today, calendar: calendar)
         abandonedToday = abandoned.filter { calendar.isDate($0.endedAt, inSameDayAs: today) }.count
+        func isBreak(_ s: SessionRecord) -> Bool { s.kind == .shortBreak || s.kind == .longBreak }
         breaksToday = sessions.filter {
-            ($0.kind == .shortBreak || $0.kind == .longBreak)
-                && $0.outcome == .completed
-                && calendar.isDate($0.endedAt, inSameDayAs: today)
+            isBreak($0) && $0.outcome == .completed && calendar.isDate($0.endedAt, inSameDayAs: today)
         }.count
+        breaksSkippedToday = sessions.filter {
+            isBreak($0) && $0.outcome == .skipped && calendar.isDate($0.endedAt, inSameDayAs: today)
+        }.count
+        breaksSkipped = sessions.filter { isBreak($0) && $0.outcome == .skipped }.count
 
         let days = (0..<14).compactMap {
             calendar.date(byAdding: .day, value: -$0, to: calendar.startOfDay(for: today))

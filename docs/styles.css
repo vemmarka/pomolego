@@ -227,7 +227,7 @@ body {
 .toggle input:checked + .track::before { transform: translateX(16px); }
 
 /* Stats */
-.stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 10px; margin-bottom: 18px; }
 .stat-cards.cards-3 { grid-template-columns: repeat(3, 1fr); }
 .stat-cards.cards-2 { grid-template-columns: repeat(2, 1fr); }
 .stat-card {

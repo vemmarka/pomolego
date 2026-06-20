@@ -26,9 +26,10 @@ export function computeStats(sessions, now = Date.now()) {
     completed.filter((s) => sameDay(s.endedAt, now)).reduce((sum, s) => sum + s.plannedDuration, 0) / 60000
   );
   const abandonedToday = abandoned.filter((s) => sameDay(s.endedAt, now)).length;
-  const breaksToday = sessions.filter((s) =>
-    (s.kind === 'shortBreak' || s.kind === 'longBreak') && s.outcome === 'completed' && sameDay(s.endedAt, now)
-  ).length;
+  const isBreak = (s) => s.kind === 'shortBreak' || s.kind === 'longBreak';
+  const breaksToday = sessions.filter((s) => isBreak(s) && s.outcome === 'completed' && sameDay(s.endedAt, now)).length;
+  const breaksSkippedToday = sessions.filter((s) => isBreak(s) && s.outcome === 'skipped' && sameDay(s.endedAt, now)).length;
+  const breaksSkipped = sessions.filter((s) => isBreak(s) && s.outcome === 'skipped').length;
 
   // 14 days, oldest first.
   const days = [];
@@ -105,6 +106,7 @@ export function computeStats(sessions, now = Date.now()) {
 
   return {
     blocksToday, focusMinutesToday, abandonedToday, breaksToday,
+    breaksSkippedToday, breaksSkipped,
     last14Days, designCounts, outcomesByDay,
     currentStreak, bestStreak,
     totalBlocks, totalFocusHours, completionRateText,
