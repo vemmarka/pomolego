@@ -258,8 +258,16 @@ body {
   border-radius: 10px; padding: 8px;
   transition: border-color 0.12s, transform 0.12s;
 }
-.album-card.clickable { cursor: pointer; }
-.album-card.clickable:hover { border-color: var(--accent); transform: translateY(-2px); }
+.album-thumb.clickable { cursor: pointer; transition: outline 0.12s; }
+.album-thumb.clickable:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+.album-name {
+  width: 100%; margin-top: 6px; box-sizing: border-box;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  background: transparent; border: 1px solid transparent; border-radius: 5px;
+  padding: 3px 5px;
+}
+.album-name:hover { border-color: var(--border); }
+.album-name:focus { border-color: var(--accent); background: var(--panel); outline: none; }
 .album-thumb {
   width: 100%; height: auto; display: block;
   border-radius: 6px; background: var(--panel);

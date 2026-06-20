@@ -195,6 +195,7 @@ struct ColumnRun: Equatable {
 struct ArchivedWorld: Codable, Equatable {
     var archivedAt: Date
     var blocks: [PlacedBlock]
+    var name: String? = nil
 }
 
 /// On-disk representation of world.json: the live world plus archives

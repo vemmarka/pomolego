@@ -18,16 +18,16 @@ struct AlbumView: View {
                 LazyVGrid(columns: columns, spacing: 16) {
                     AlbumCard(blocks: state.world.blocks, title: "Current", date: nil)
                     ForEach(state.worldFile.archived.reversed(), id: \.archivedAt) { archived in
-                        AlbumCard(blocks: archived.blocks, title: "Saved", date: archived.archivedAt)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
+                        AlbumCard(
+                            blocks: archived.blocks,
+                            title: archived.name ?? "Saved",
+                            date: archived.archivedAt,
+                            initialName: archived.name ?? "",
+                            onOpen: {
                                 state.loadArchivedField(archived)
                                 onPick()
-                            }
-                            .onHover { inside in
-                                if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                            }
-                            .help("Open this field and keep building")
+                            },
+                            onRename: { state.renameArchivedField(archivedAt: archived.archivedAt, to: $0) })
                     }
                 }
                 if state.worldFile.archived.isEmpty {
@@ -68,33 +68,72 @@ private struct AlbumCard: View {
     let blocks: [PlacedBlock]
     let title: String
     let date: Date?
+    let onOpen: (() -> Void)?
+    let onRename: ((String) -> Void)?
+
+    @State private var draftName: String
+    @FocusState private var nameFocused: Bool
+
+    init(blocks: [PlacedBlock], title: String, date: Date?, initialName: String = "",
+         onOpen: (() -> Void)? = nil, onRename: ((String) -> Void)? = nil) {
+        self.blocks = blocks
+        self.title = title
+        self.date = date
+        self.onOpen = onOpen
+        self.onRename = onRename
+        _draftName = State(initialValue: initialName)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Canvas { context, size in
-                let cw = size.width / CGFloat(World.columns)
-                let ch = size.height / CGFloat(World.rows)
-                var ground = Path()
-                ground.move(to: CGPoint(x: 0, y: size.height - 0.5))
-                ground.addLine(to: CGPoint(x: size.width, y: size.height - 0.5))
-                context.stroke(ground, with: .color(.secondary.opacity(0.35)), lineWidth: 1)
-                for b in blocks {
-                    let r = CGRect(x: CGFloat(b.col) * cw,
-                                   y: CGFloat(World.rows - 1 - b.row) * ch,
-                                   width: cw, height: ch)
-                    BlockArt.draw(in: context, rect: r, designID: b.designID, isCracked: b.isCracked)
-                }
-            }
-            .aspectRatio(CGFloat(World.columns) / CGFloat(World.rows), contentMode: .fit)
-            .background(.quaternary.opacity(0.3))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            thumbnail
 
-            Text(title).font(.callout.weight(.semibold))
+            if let onRename {
+                TextField("Name this field", text: $draftName)
+                    .textFieldStyle(.plain)
+                    .font(.callout.weight(.semibold))
+                    .focused($nameFocused)
+                    .onSubmit { onRename(draftName); nameFocused = false }
+                    .onChange(of: nameFocused) { _, focused in if !focused { onRename(draftName) } }
+            } else {
+                Text(title).font(.callout.weight(.semibold))
+            }
             Text(subtitle).font(.caption).foregroundStyle(.secondary)
         }
         .padding(8)
         .background(.quaternary.opacity(0.18),
                     in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var thumbnail: some View {
+        let canvas = Canvas { context, size in
+            let cw = size.width / CGFloat(World.columns)
+            let ch = size.height / CGFloat(World.rows)
+            var ground = Path()
+            ground.move(to: CGPoint(x: 0, y: size.height - 0.5))
+            ground.addLine(to: CGPoint(x: size.width, y: size.height - 0.5))
+            context.stroke(ground, with: .color(.secondary.opacity(0.35)), lineWidth: 1)
+            for b in blocks {
+                let r = CGRect(x: CGFloat(b.col) * cw,
+                               y: CGFloat(World.rows - 1 - b.row) * ch,
+                               width: cw, height: ch)
+                BlockArt.draw(in: context, rect: r, designID: b.designID, isCracked: b.isCracked)
+            }
+        }
+        .aspectRatio(CGFloat(World.columns) / CGFloat(World.rows), contentMode: .fit)
+        .background(.quaternary.opacity(0.3))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+        if let onOpen {
+            canvas
+                .contentShape(Rectangle())
+                .onTapGesture { onOpen() }
+                .onHover { $0 ? NSCursor.pointingHand.push() : NSCursor.pop() }
+                .help("Open this field and keep building")
+        } else {
+            canvas
+        }
     }
 
     private var subtitle: String {

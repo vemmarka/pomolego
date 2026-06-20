@@ -305,6 +305,14 @@ final class AppState: ObservableObject {
         store.saveWorld(worldFile)
     }
 
+    /// Rename a saved field in the album (empty name clears it).
+    func renameArchivedField(archivedAt: Date, to name: String) {
+        guard let index = worldFile.archived.firstIndex(where: { $0.archivedAt == archivedAt }) else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        worldFile.archived[index].name = trimmed.isEmpty ? nil : trimmed
+        store.saveWorld(worldFile)
+    }
+
     /// Open an archived field as the active canvas so the user can keep
     /// building on it. The current field is saved back into the album first
     /// (unless empty), so this is a non-destructive switch.

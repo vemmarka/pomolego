@@ -1156,7 +1156,7 @@ function openAlbum() {
   body.innerHTML = '';
 
   body.append(el('p', { class: 'setting-note' },
-    'Click a saved field to open it and keep building. Your current field is saved to the album first.'));
+    'Click a saved field’s picture to open it and keep building; type in its name to label it. Your current field is saved to the album first.'));
 
   const freshBtn = el('button', {
     class: 'btn btn-danger', onclick: () => {
@@ -1196,17 +1196,36 @@ function albumCard(blocks, label, dateMs, archivedIndex) {
   const cracked = blocks.filter((b) => b.isCracked).length;
   let sub = dateMs ? `${new Date(dateMs).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} · ` : '';
   sub += `${built} block${built === 1 ? '' : 's'}${cracked ? ` · ${cracked} cracked` : ''}`;
-  const clickable = archivedIndex != null;
-  const card = el('div', { class: `album-card ${clickable ? 'clickable' : ''}` },
-    thumb,
-    el('div', { class: 'album-label' }, label),
-    el('div', { class: 'album-sub' }, sub));
-  if (clickable) {
-    card.title = 'Open this field and keep building';
-    card.onclick = () => loadArchivedField(archivedIndex);
+  const card = el('div', { class: 'album-card' });
+  card.append(thumb);
+
+  if (archivedIndex != null) {
+    thumb.classList.add('clickable');
+    thumb.title = 'Open this field and keep building';
+    thumb.onclick = () => loadArchivedField(archivedIndex);
+    const nameInput = el('input', {
+      class: 'album-name', type: 'text', maxlength: 40, placeholder: 'Name this field',
+      value: worldFile.archived[archivedIndex].name || '',
+    });
+    // onchange fires on blur/Enter, so it doesn't churn while typing.
+    nameInput.onchange = () => renameArchivedField(archivedIndex, nameInput.value);
+    card.append(nameInput);
+  } else {
+    card.append(el('div', { class: 'album-label' }, label));
   }
+  card.append(el('div', { class: 'album-sub' }, sub));
+
   setTimeout(() => drawThumb(thumb, blocks, cw, ch), 0);
   return card;
+}
+
+// Rename a saved field in the album (empty clears it).
+function renameArchivedField(archivedIndex, name) {
+  const entry = worldFile.archived[archivedIndex];
+  if (!entry) return;
+  const trimmed = name.trim();
+  if (trimmed) entry.name = trimmed; else delete entry.name;
+  Store.saveWorldFile(worldFile);
 }
 
 // Open an archived field as the active canvas (saving the current one back to
