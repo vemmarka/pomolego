@@ -164,13 +164,18 @@ struct MainPanelView: View {
         VStack(spacing: 12) {
             DesignPickerView()
 
-            HStack(spacing: 6) {
-                ForEach([15, 25, 45, 60], id: \.self) { preset in
-                    presetPill(preset)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(state.durationPresets, id: \.self) { preset in
+                        presetPill(preset)
+                    }
                 }
-                Spacer()
+                .padding(.vertical, 1)
+            }
+
+            HStack(spacing: 6) {
                 TextField("min", text: $customMinutesText)
-                    .frame(width: 34)
+                    .frame(width: 44)
                     .multilineTextAlignment(.trailing)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { applyCustomMinutes() }
@@ -180,6 +185,10 @@ struct MainPanelView: View {
                 Text("min")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                Spacer()
+                Text("Type a time to add it as a preset")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             .onAppear { customMinutesText = "\(state.focusMinutes)" }
             .onChange(of: state.focusMinutes) { _, newValue in
@@ -228,7 +237,9 @@ struct MainPanelView: View {
 
     private func applyCustomMinutes() {
         if let minutes = Int(customMinutesText) {
-            state.focusMinutes = min(180, max(5, minutes))
+            let value = min(180, max(5, minutes))
+            state.focusMinutes = value
+            state.addCustomDuration(value)   // remember it as a sorted preset pill
         }
         customMinutesText = "\(state.focusMinutes)"
     }

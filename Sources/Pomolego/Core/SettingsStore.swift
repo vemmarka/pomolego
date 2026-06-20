@@ -31,6 +31,7 @@ enum AppSettings {
     static let menuBarShowsCountdownKey = "menuBarShowsCountdown"
     static let crackedBlockOnAbandonKey = "crackedBlockOnAbandon"
     static let selectedDesignIDKey = "selectedDesignID"
+    static let customDurationsKey = "customDurations"
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -71,6 +72,11 @@ enum AppSettings {
     static var selectedDesignID: String {
         get { defaults.string(forKey: selectedDesignIDKey) ?? "brick" }
         set { defaults.set(newValue, forKey: selectedDesignIDKey) }
+    }
+
+    static var customDurations: [Int] {
+        get { (defaults.array(forKey: customDurationsKey) as? [Int]) ?? [] }
+        set { defaults.set(newValue, forKey: customDurationsKey) }
     }
 
     static var launchAtLogin: Bool {

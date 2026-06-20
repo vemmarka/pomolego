@@ -38,6 +38,23 @@ final class AppState: ObservableObject {
     @Published var focusMinutes: Int {
         didSet { AppSettings.focusMinutes = focusMinutes }
     }
+    /// Extra focus presets the user has typed in (persisted, shown as pills).
+    @Published var customDurations: [Int]
+
+    /// Default presets plus customs, deduped and sorted (so a custom 30 sits
+    /// between 25 and 45).
+    var durationPresets: [Int] {
+        Array(Set([15, 25, 45, 60] + customDurations))
+            .filter { $0 >= 5 && $0 <= 180 }
+            .sorted()
+    }
+
+    func addCustomDuration(_ value: Int) {
+        let clamped = min(180, max(5, value))
+        guard ![15, 25, 45, 60].contains(clamped), !customDurations.contains(clamped) else { return }
+        customDurations.append(clamped)
+        AppSettings.customDurations = customDurations
+    }
 
     /// Set by the AppKit layer to receive status item refreshes and
     /// overlay requests.
@@ -81,6 +98,7 @@ final class AppState: ObservableObject {
         self.selectedDesignID = AppSettings.selectedDesignID
         // Clamp any previously-saved value to the 5-minute floor.
         self.focusMinutes = min(180, max(5, AppSettings.focusMinutes))
+        self.customDurations = AppSettings.customDurations
         self.engine = TimerEngine()
         engine.config = TimerEngine.Config(
             sessionsBeforeLongBreak: AppSettings.sessionsBeforeLongBreak,

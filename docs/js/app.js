@@ -186,6 +186,21 @@ function setFocusMinutes(value) {
   render();
 }
 
+// The preset pills: defaults plus any custom durations the user typed, deduped
+// and sorted so a custom (e.g. 30) sits between 25 and 45.
+function durationPresets() {
+  const all = new Set([15, 25, 45, 60, ...(settings.customDurations || [])]);
+  return [...all].filter((v) => v >= MIN_FOCUS_MINUTES && v <= MAX_FOCUS_MINUTES).sort((a, b) => a - b);
+}
+
+function addCustomPreset(v) {
+  if ([15, 25, 45, 60].includes(v)) return;        // already a default pill
+  settings.customDurations = settings.customDurations || [];
+  if (settings.customDurations.includes(v)) return;
+  settings.customDurations.push(v);
+  Store.saveSettings(settings);
+}
+
 function startFreshCanvas() {
   if (world().blocks.length === 0) return;
   worldFile.archived.push({ archivedAt: Date.now(), blocks: world().blocks });
@@ -835,14 +850,18 @@ function idleControls() {
   wrap.append(designPicker());
 
   const durationRow = el('div', { class: 'duration-row' });
-  for (const preset of [15, 25, 45, 60]) {
+  for (const preset of durationPresets()) {
     durationRow.append(el('button', {
       class: `pill ${focusMinutes === preset ? 'selected' : ''}`,
       onclick: () => setFocusMinutes(preset),
     }, String(preset)));
   }
   const input = el('input', { class: 'duration-input', type: 'number', min: MIN_FOCUS_MINUTES, max: MAX_FOCUS_MINUTES, value: focusMinutes });
-  input.addEventListener('change', () => setFocusMinutes(parseInt(input.value, 10) || focusMinutes));
+  input.addEventListener('change', () => {
+    const v = Math.min(MAX_FOCUS_MINUTES, Math.max(MIN_FOCUS_MINUTES, parseInt(input.value, 10) || focusMinutes));
+    addCustomPreset(v);   // remember it as a pill, sorted in place
+    setFocusMinutes(v);   // re-renders, showing the new pill selected
+  });
   durationRow.append(input, el('span', { class: 'unit' }, 'min'));
   wrap.append(durationRow);
 

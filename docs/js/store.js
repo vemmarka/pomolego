@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   showCountdownInTitle: true,
   crackedBlockOnAbandon: true,
   selectedDesignID: 'brick',
+  customDurations: [], // extra focus presets the user has typed in
 };
 
 function load(key, fallback) {
