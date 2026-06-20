@@ -9,6 +9,7 @@ struct MainPanelView: View {
     /// Set by the AppKit layer so panel buttons can open windows/menus.
     var openStatistics: () -> Void = {}
     var openSettings: () -> Void = {}
+    var openAlbum: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 12) {
@@ -32,6 +33,11 @@ struct MainPanelView: View {
             Text("Pomolego")
                 .font(.headline)
             Spacer()
+            Button(action: openAlbum) {
+                Image(systemName: "photo.on.rectangle.angled")
+            }
+            .help("Album")
+            .accessibilityLabel("Album")
             Button(action: openStatistics) {
                 Image(systemName: "chart.bar.xaxis")
             }

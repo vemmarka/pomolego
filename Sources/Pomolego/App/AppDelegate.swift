@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private let overlay = OverlayController()
     private var statisticsWindow: NSWindow?
+    private var albumWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setUpStatusItem()
@@ -43,7 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.animates = true
         let root = MainPanelView(
             openStatistics: { [weak self] in self?.openStatistics() },
-            openSettings: { [weak self] in self?.openSettings() })
+            openSettings: { [weak self] in self?.openSettings() },
+            openAlbum: { [weak self] in self?.openAlbum() })
             .environmentObject(appState)
         popover.contentViewController = NSHostingController(rootView: root)
     }
@@ -68,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showContextMenu() {
         let menu = NSMenu()
+        menu.addItem(withTitle: "Album",
+                     action: #selector(menuOpenAlbum), keyEquivalent: "")
         menu.addItem(withTitle: "Statistics",
                      action: #selector(menuOpenStatistics), keyEquivalent: "")
         menu.addItem(withTitle: "Settings…",
@@ -83,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = nil
     }
 
+    @objc private func menuOpenAlbum() { openAlbum() }
     @objc private func menuOpenStatistics() { openStatistics() }
     @objc private func menuOpenSettings() { openSettings() }
     @objc private func menuQuit() { NSApp.terminate(nil) }
@@ -194,6 +199,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statisticsWindow = window
         }
         statisticsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func openAlbum() {
+        popover.performClose(nil)
+        if albumWindow == nil {
+            let hosting = NSHostingController(
+                rootView: AlbumView().environmentObject(appState))
+            let window = NSWindow(contentViewController: hosting)
+            window.title = "Pomolego Album"
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.setContentSize(NSSize(width: 600, height: 540))
+            window.isReleasedWhenClosed = false
+            window.center()
+            albumWindow = window
+        }
+        albumWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

@@ -16,6 +16,7 @@
         <h1>Pomolego</h1>
       </div>
       <div class="header-actions">
+        <button id="btn-album" class="icon-btn" title="Album" aria-label="Album">🖼️</button>
         <button id="btn-stats" class="icon-btn" title="Statistics" aria-label="Statistics">📊</button>
         <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings">⚙️</button>
       </div>
@@ -45,6 +46,17 @@
         <button class="icon-btn" data-close-modal aria-label="Close">✕</button>
       </div>
       <div class="modal-body" id="settings-body"></div>
+    </div>
+  </div>
+
+  <!-- Album modal -->
+  <div id="album-modal" class="modal" hidden>
+    <div class="modal-card modal-card-wide">
+      <div class="modal-head">
+        <h2>Album</h2>
+        <button class="icon-btn" data-close-modal aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="album-body"></div>
     </div>
   </div>
 

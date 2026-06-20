@@ -306,11 +306,16 @@ function render() {
 }
 
 function wireStaticButtons() {
+  $('btn-album').onclick = openAlbum;
   $('btn-stats').onclick = openStats;
   $('btn-settings').onclick = openSettings;
   $('unlock-dismiss').onclick = () => { unlockAnnouncement = null; renderUnlockBanner(); };
   document.querySelectorAll('[data-close-modal]').forEach((b) => {
-    b.onclick = () => { $('settings-modal').hidden = true; $('stats-modal').hidden = true; };
+    b.onclick = () => {
+      $('settings-modal').hidden = true;
+      $('stats-modal').hidden = true;
+      $('album-modal').hidden = true;
+    };
   });
   canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -1142,6 +1147,74 @@ function selectRow(label, key, options) {
   }
   select.addEventListener('change', () => commitSetting(key, select.value));
   return el('div', { class: 'setting-row' }, el('label', {}, label), select);
+}
+
+// --- album modal ---------------------------------------------------------
+
+function openAlbum() {
+  const body = $('album-body');
+  body.innerHTML = '';
+
+  body.append(el('p', { class: 'setting-note' },
+    'Snapshots of fields you have saved. Start a fresh canvas to add the current one here.'));
+
+  const freshBtn = el('button', {
+    class: 'btn btn-danger', onclick: () => {
+      if (world().blocks.length === 0) return;
+      if (confirm(`Save the current field (${world().blocks.length} blocks) to the album and start a fresh one?`)) {
+        startFreshCanvas();
+        openAlbum(); // refresh the grid
+      }
+    },
+  }, '＋ Save current & start fresh');
+  if (world().blocks.length === 0) freshBtn.disabled = true;
+  body.append(el('div', { class: 'album-actions' }, freshBtn));
+
+  const grid = el('div', { class: 'album-grid' });
+  grid.append(albumCard(world().blocks, 'Current', null));
+  [...worldFile.archived].reverse().forEach((a) => {
+    grid.append(albumCard(a.blocks, 'Saved', a.archivedAt));
+  });
+  body.append(grid);
+
+  if (worldFile.archived.length === 0) {
+    body.append(el('p', { class: 'setting-note', style: 'text-align:center;margin-top:14px' },
+      'No saved fields yet — your archived worlds will appear here.'));
+  }
+
+  $('album-modal').hidden = false;
+}
+
+function albumCard(blocks, label, dateMs) {
+  const thumbW = 220;
+  const cw = thumbW / W.COLUMNS;
+  const ch = cw * (CELL_H / CELL_W);
+  const thumb = el('canvas', { width: thumbW, height: Math.round(ch * W.ROWS), class: 'album-thumb' });
+  const built = blocks.filter((b) => !b.isCracked).length;
+  const cracked = blocks.filter((b) => b.isCracked).length;
+  let sub = dateMs ? `${new Date(dateMs).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} · ` : '';
+  sub += `${built} block${built === 1 ? '' : 's'}${cracked ? ` · ${cracked} cracked` : ''}`;
+  const card = el('div', { class: 'album-card' },
+    thumb,
+    el('div', { class: 'album-label' }, label),
+    el('div', { class: 'album-sub' }, sub));
+  setTimeout(() => drawThumb(thumb, blocks, cw, ch), 0);
+  return card;
+}
+
+function drawThumb(canvasEl, blocks, cw, ch) {
+  const c = canvasEl.getContext('2d');
+  c.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  c.fillStyle = 'rgba(127,127,127,0.06)';
+  c.fillRect(0, 0, canvasEl.width, canvasEl.height);
+  c.strokeStyle = 'rgba(127,127,127,0.35)';
+  c.beginPath();
+  c.moveTo(0, canvasEl.height - 0.5);
+  c.lineTo(canvasEl.width, canvasEl.height - 0.5);
+  c.stroke();
+  for (const b of blocks) {
+    drawBlock(c, b.col * cw, (W.ROWS - 1 - b.row) * ch, cw, ch, b.designID, b.isCracked);
+  }
 }
 
 // --- statistics modal ----------------------------------------------------

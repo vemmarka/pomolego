@@ -50,8 +50,10 @@ validity (gravity rule, stacking, bounds, default targets).
   rule). The world persists forever. While idle, clicking an existing block
   selects it for **moving or deleting** (also a change from the original
   "never deletable" rule); removing a block leaves everything else in place.
-  Settings → Danger Zone can archive the world and start a fresh canvas
-  (statistics keep all history).
+  Settings → Danger Zone (or the Album) can archive the world and start a
+  fresh canvas (statistics keep all history). The **Album** is a photo
+  gallery of saved fields — the current world plus every archived one,
+  rendered as thumbnails with their date and block count.
 - **Living world** — contiguous horizontal runs of certain designs come
   alive. 3+ **Water** blocks → a fish swims back and forth; at 5+ it also
   gets rising bubbles and occasional fish loops. 3+ **Garden** blocks →

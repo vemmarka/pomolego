@@ -247,6 +247,23 @@ body {
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 
+/* Album */
+.album-actions { margin: 6px 0 14px; }
+.album-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;
+}
+.album-card {
+  background: rgba(127,127,127,0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px;
+}
+.album-thumb {
+  width: 100%; height: auto; display: block;
+  border-radius: 6px; background: var(--panel);
+}
+.album-label { font-size: 13px; font-weight: 600; margin-top: 6px; }
+.album-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
 /* Completion overlay */
 .overlay {
   position: fixed; inset: 0; pointer-events: none; z-index: 200;
