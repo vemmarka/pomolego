@@ -60,6 +60,7 @@ struct WorldView: View {
                 drawLavaEmbers(context, date: timeline.date)
                 drawBlossomPetals(context, date: timeline.date)
                 drawNeonLasers(context, date: timeline.date, reduceMotion: reduceMotion)
+                drawGreenhouseLife(context, date: timeline.date)
             }
         }
         .onTapGesture(coordinateSpace: .local) { location in
@@ -216,6 +217,52 @@ struct WorldView: View {
             let coreAlpha = reduceMotion ? 0.5 : max(0, 0.5 + 0.4 * sin(t * 5))
             ctx.fill(Path(ellipseIn: CGRect(x: ox - 2.5, y: oy - 2.5, width: 5, height: 5)),
                      with: .color(.white.opacity(coreAlpha)))
+        }
+    }
+
+    /// A row of 3+ greenhouse blocks comes alive inside: a soft grow-light
+    /// glow, swaying plants, and pollen motes drifting up under the glass.
+    private func drawGreenhouseLife(_ context: GraphicsContext, date: Date) {
+        let t = date.timeIntervalSinceReferenceDate
+        for run in state.world.greenhouseRuns {
+            let rowTop = CGFloat(World.rows - 1 - run.row) * Self.cellHeight
+            let glow = 0.06 + 0.05 * (0.5 + 0.5 * sin(t * 1.6 + Double(run.startCol)))
+            let runRect = CGRect(x: CGFloat(run.startCol) * Self.cellWidth, y: rowTop,
+                                 width: CGFloat(run.endCol - run.startCol + 1) * Self.cellWidth,
+                                 height: Self.cellHeight)
+            context.fill(Path(roundedRect: runRect, cornerRadius: 2.5),
+                         with: .color(Color(red: 0.70, green: 1.0, blue: 0.55).opacity(glow)))
+            for col in run.startCol...run.endCol {
+                let x0 = CGFloat(col) * Self.cellWidth
+                let seed = Double(col) * 1.7 + Double(run.row) * 0.6
+                let grow = 0.7 + 0.3 * (0.5 + 0.5 * sin(t * 0.9 + seed))
+                let baseX = x0 + Self.cellWidth * 0.5
+                let baseY = rowTop + Self.cellHeight - 1
+                let topY = rowTop + Self.cellHeight * (1 - 0.7 * CGFloat(grow))
+                let sway = CGFloat(sin(t * 1.8 + seed)) * 2
+                var stem = Path()
+                stem.move(to: CGPoint(x: baseX, y: baseY))
+                stem.addQuadCurve(to: CGPoint(x: baseX + sway, y: topY),
+                                  control: CGPoint(x: baseX + sway, y: (baseY + topY) / 2))
+                context.stroke(stem, with: .color(Color(red: 0.24, green: 0.59, blue: 0.27).opacity(0.9)), lineWidth: 1.1)
+                let leafColor = Color(red: 0.31, green: 0.69, blue: 0.35).opacity(0.85)
+                let ly = (baseY + topY) / 2
+                for side in [-1.0, 1.0] {
+                    var leaf = context
+                    leaf.translateBy(x: baseX + sway * 0.5 + CGFloat(side) * 3, y: ly)
+                    leaf.rotate(by: .radians(side * 0.5))
+                    leaf.fill(Path(ellipseIn: CGRect(x: -2.6, y: -1.3, width: 5.2, height: 2.6)),
+                              with: .color(leafColor))
+                }
+                for k in 0..<2 {
+                    let rise = (t * 0.25 + Double(k) * 0.5 + seed).truncatingRemainder(dividingBy: 1)
+                    let mx = x0 + Self.cellWidth * CGFloat(0.3 + 0.4 * ((Double(k) * 0.6 + seed).truncatingRemainder(dividingBy: 1)))
+                        + CGFloat(sin(t * 2 + Double(k))) * 1.5
+                    let my = rowTop + Self.cellHeight - CGFloat(rise) * Self.cellHeight
+                    context.fill(Path(ellipseIn: CGRect(x: mx - 0.8, y: my - 0.8, width: 1.6, height: 1.6)),
+                                 with: .color(Color(red: 1.0, green: 0.96, blue: 0.71).opacity((1 - rise) * 0.8)))
+                }
+            }
         }
     }
 

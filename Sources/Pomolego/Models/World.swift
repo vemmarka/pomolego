@@ -177,6 +177,7 @@ struct World: Codable, Equatable {
     /// stack of neon throws a laser party.
     var waterRuns: [BlockRun] { horizontalRuns(ofDesign: "water") }
     var gardenRuns: [BlockRun] { horizontalRuns(ofDesign: "garden") }
+    var greenhouseRuns: [BlockRun] { horizontalRuns(ofDesign: "greenhouse") }
     var neonRuns: [ColumnRun] { verticalRuns(ofDesign: "neon") }
 }
 

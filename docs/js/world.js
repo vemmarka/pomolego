@@ -170,6 +170,7 @@ export function verticalRuns(world, designID, minLength = 3) {
 // of neon throws a laser party.
 export function waterRuns(world, minLength = 3) { return horizontalRuns(world, 'water', minLength); }
 export function gardenRuns(world, minLength = 3) { return horizontalRuns(world, 'garden', minLength); }
+export function greenhouseRuns(world, minLength = 3) { return horizontalRuns(world, 'greenhouse', minLength); }
 export function neonRuns(world, minLength = 3) { return verticalRuns(world, 'neon', minLength); }
 
 export function builtCount(world) {

@@ -59,7 +59,9 @@ validity (gravity rule, stacking, bounds, default targets).
 - **Living world** — contiguous horizontal runs of certain designs come
   alive. 3+ **Water** blocks → a fish swims back and forth; at 5+ it also
   gets rising bubbles and occasional fish loops. 3+ **Garden** blocks →
-  flowers sprout on top, growing in and swaying. A **vertical** stack of 3+
+  flowers sprout on top, growing in and swaying. 3+ **Greenhouse** blocks →
+  the plants inside grow and sway under a soft grow-light glow with drifting
+  pollen. A **vertical** stack of 3+
   **Neon** blocks throws a laser party (rotating colour-cycling beams; eased
   off under Reduce Motion). Every **Lava** block glows and throws embers
   upward; every **Blossom** block sheds drifting petals. When a block lands

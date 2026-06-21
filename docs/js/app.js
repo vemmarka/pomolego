@@ -415,6 +415,7 @@ function drawWorld() {
   drawLavaEmbers(performance.now() / 1000);
   drawBlossomPetals(performance.now() / 1000);
   drawNeonLasers(performance.now() / 1000);
+  drawGreenhouseLife(performance.now() / 1000);
 }
 
 function drawValidCells() {
@@ -741,6 +742,55 @@ function drawPlacingBlock(b, r, p) {
   }
 }
 
+// A row of 3+ greenhouse blocks comes alive inside: a soft grow-light glow,
+// swaying plants growing taller, and pollen motes drifting up under the glass.
+function drawGreenhouseLife(t) {
+  for (const run of W.greenhouseRuns(world())) {
+    const rowTop = (W.ROWS - 1 - run.row) * CELL_H;
+    // Warm grow-light glow pulsing across the whole run.
+    const glow = 0.06 + 0.05 * (0.5 + 0.5 * Math.sin(t * 1.6 + run.startCol));
+    ctx.fillStyle = `rgba(180, 255, 140, ${glow})`;
+    roundRect(ctx, run.startCol * CELL_W, rowTop, (run.endCol - run.startCol + 1) * CELL_W, CELL_H, 2.5);
+    ctx.fill();
+    for (let col = run.startCol; col <= run.endCol; col++) {
+      const x0 = col * CELL_W;
+      const seed = col * 1.7 + run.row * 0.6;
+      // Swaying plant: a stem with two leaves, growing/breathing.
+      const grow = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * 0.9 + seed));
+      const baseX = x0 + CELL_W * 0.5;
+      const baseY = rowTop + CELL_H - 1;
+      const topY = rowTop + CELL_H * (1 - 0.7 * grow);
+      const sway = Math.sin(t * 1.8 + seed) * 2;
+      ctx.strokeStyle = 'rgba(60, 150, 70, 0.9)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.quadraticCurveTo(baseX + sway, (baseY + topY) / 2, baseX + sway, topY);
+      ctx.stroke();
+      // Two leaves.
+      ctx.fillStyle = 'rgba(80, 175, 90, 0.85)';
+      for (const side of [-1, 1]) {
+        const ly = (baseY + topY) / 2;
+        ctx.beginPath();
+        ctx.ellipse(baseX + sway * 0.5 + side * 3, ly, 2.6, 1.3, side * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Pollen motes drifting up inside the glass.
+      ctx.fillStyle = 'rgba(255, 245, 180, 0.8)';
+      for (let k = 0; k < 2; k++) {
+        const rise = (t * 0.25 + k * 0.5 + seed) % 1;
+        const mx = x0 + CELL_W * (0.3 + 0.4 * ((k * 0.6 + seed) % 1)) + Math.sin(t * 2 + k) * 1.5;
+        const my = rowTop + CELL_H - rise * CELL_H;
+        ctx.globalAlpha = (1 - rise) * 0.8;
+        ctx.beginPath();
+        ctx.arc(mx, my, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
 // Continuous redraw loop, alive only while there's animated life on the board.
 function placementActive() {
   return placement != null && performance.now() - placement.start < PLACE_DURATION;
@@ -748,7 +798,7 @@ function placementActive() {
 function hasAmbientLife() {
   if (placementActive()) return true;
   if (W.waterRuns(world()).length > 0 || W.gardenRuns(world()).length > 0
-      || W.neonRuns(world()).length > 0) return true;
+      || W.greenhouseRuns(world()).length > 0 || W.neonRuns(world()).length > 0) return true;
   return world().blocks.some((b) => !b.isCracked && (b.designID === 'lava' || b.designID === 'blossom'));
 }
 let ambientRAF = null;
