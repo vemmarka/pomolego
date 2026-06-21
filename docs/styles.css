@@ -107,6 +107,12 @@ body {
 /* Controls */
 .controls { display: flex; flex-direction: column; gap: 12px; }
 
+.collection-progress {
+  font-size: 12px; display: flex; gap: 5px; flex-wrap: wrap; padding: 0 2px;
+}
+.cp-count { font-weight: 600; color: var(--text); }
+.cp-next { color: var(--text-secondary); }
+
 .design-picker {
   display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px;
 }

@@ -2,7 +2,7 @@
 // views from the native macOS app. State persists in localStorage; a running
 // timer resumes after a refresh or tab close.
 
-import { CATALOG, designForId, css, APP_ACCENT, unlockedDesigns, newlyUnlocked } from './designs.js';
+import { CATALOG, designForId, css, APP_ACCENT, unlockedDesigns, newlyUnlocked, nextUnlock } from './designs.js';
 import { drawBlock } from './art.js';
 import * as W from './world.js';
 import { TimerEngine, countdownString } from './timer.js';
@@ -823,6 +823,23 @@ function renderControls() {
   else controlsEl.append(breakControls());
 }
 
+function collectionProgress() {
+  const total = totalBlocksBuilt();
+  const next = nextUnlock(total);
+  const row = el('div', { class: 'collection-progress' });
+  const count = el('span', { class: 'cp-count' },
+    `${total} block${total === 1 ? '' : 's'} built`);
+  row.append(count);
+  if (next) {
+    const remaining = next.unlockAt - total;
+    row.append(el('span', { class: 'cp-next' },
+      `· ${remaining} more to unlock ${next.name}`));
+  } else {
+    row.append(el('span', { class: 'cp-next' }, '· all designs unlocked 🎉'));
+  }
+  return row;
+}
+
 function designPicker() {
   const picker = el('div', { class: 'design-picker' });
   const total = totalBlocksBuilt();
@@ -847,6 +864,7 @@ function designPicker() {
 
 function idleControls() {
   const wrap = el('div', { class: 'controls' });
+  wrap.append(collectionProgress());
   wrap.append(designPicker());
 
   const durationRow = el('div', { class: 'duration-row' });

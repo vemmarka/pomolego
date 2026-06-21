@@ -160,8 +160,27 @@ struct MainPanelView: View {
         .padding(.vertical, 4)
     }
 
+    private var collectionProgress: some View {
+        let total = state.totalBlocksBuilt
+        let next = BlockDesign.nextUnlock(totalBlocksBuilt: total)
+        return HStack(spacing: 5) {
+            Text("\(total) block\(total == 1 ? "" : "s") built")
+                .fontWeight(.semibold)
+            if let next {
+                Text("· \(next.unlockAt - total) more to unlock \(next.name)")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("· all designs unlocked 🎉")
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .font(.caption)
+    }
+
     private var idlePlanningControls: some View {
         VStack(spacing: 12) {
+            collectionProgress
             DesignPickerView()
 
             ScrollView(.horizontal, showsIndicators: false) {
