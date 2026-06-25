@@ -201,6 +201,7 @@ body {
   font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
   color: var(--text-secondary); margin: 0 0 10px;
 }
+.backup-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .setting-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 0; gap: 12px;

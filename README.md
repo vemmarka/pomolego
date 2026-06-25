@@ -79,6 +79,10 @@ validity (gravity rule, stacking, bounds, default targets).
 - **Data** — JSON under `~/Library/Application Support/Pomolego/`
   (`world.json`, `sessions.json`, `running.json`), written atomically.
   All statistics derive from the append-only session log.
+- **Backup** — Settings → Backup exports everything (world + archived fields
+  + session log + settings) to a single JSON file and imports it back. The
+  format is shared between the macOS app and the web version, so a backup is
+  also how you move a world between them or between browsers/devices.
 
 ## Decisions made while implementing the spec
 

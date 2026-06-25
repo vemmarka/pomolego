@@ -1173,6 +1173,15 @@ function openSettings() {
     toggleRow('Cracked block when a session is abandoned', 'crackedBlockOnAbandon'),
   ]));
 
+  const backup = settingGroup('Backup', []);
+  backup.append(el('p', { class: 'setting-note' },
+    'Your worlds and stats live only in this browser. Export a backup file to keep them safe, or to move them to another browser, device, or the Mac app.'));
+  const backupRow = el('div', { class: 'backup-actions' });
+  backupRow.append(el('button', { class: 'btn', onclick: exportBackup }, '⤓ Export backup'));
+  backupRow.append(el('button', { class: 'btn', onclick: importBackup }, '⤒ Import backup'));
+  backup.append(backupRow);
+  body.append(backup);
+
   const danger = settingGroup('Danger zone', []);
   danger.append(el('p', { class: 'setting-note' }, 'Archives the current world and starts an empty one. Statistics keep the full history.'));
   danger.append(el('button', {
@@ -1186,6 +1195,46 @@ function openSettings() {
   body.append(danger);
 
   $('settings-modal').hidden = false;
+}
+
+function exportBackup() {
+  const data = JSON.stringify(Store.exportData(), null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const a = el('a', { href: url, download: `pomolego-backup-${stamp}.json` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup() {
+  const input = el('input', { type: 'file', accept: 'application/json,.json' });
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(reader.result); } catch { data = null; }
+      if (!data || data.app !== 'pomolego') {
+        alert('That file is not a Pomolego backup.');
+        return;
+      }
+      const blocks = data.world?.current?.blocks?.length ?? 0;
+      const sessions = Array.isArray(data.sessions) ? data.sessions.length : 0;
+      if (!confirm(`Import this backup? It replaces your current world (${blocks} blocks) and ${sessions} logged sessions. Consider exporting first.`)) return;
+      if (Store.importData(data)) {
+        // Reload so all in-memory state re-reads from storage cleanly.
+        location.reload();
+      } else {
+        alert('Could not import that backup.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 function settingGroup(title, rows) {

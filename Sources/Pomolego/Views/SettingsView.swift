@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     var body: some View {
@@ -8,6 +9,8 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "timer") }
             AppearanceSettingsTab()
                 .tabItem { Label("Appearance", systemImage: "paintbrush") }
+            BackupTab()
+                .tabItem { Label("Backup", systemImage: "arrow.up.arrow.down.circle") }
             DangerZoneTab()
                 .tabItem { Label("Danger Zone", systemImage: "exclamationmark.triangle") }
         }
@@ -114,6 +117,67 @@ private struct AppearanceSettingsTab: View {
         }
         .formStyle(.grouped)
         .padding(.bottom, 8)
+    }
+}
+
+private struct BackupTab: View {
+    @EnvironmentObject var state: AppState
+    @State private var pendingImport: Data?
+    @State private var confirmingImport = false
+    @State private var message: String?
+
+    var body: some View {
+        Form {
+            Section("Backup") {
+                Text("Your worlds and statistics are stored only on this Mac. Export a backup file to keep them safe — or to move them to another Mac or the Pomolego website.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("Export Backup…") { exportBackup() }
+                    Button("Import Backup…") { importBackup() }
+                }
+                if let message {
+                    Text(message).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding(.bottom, 8)
+        .confirmationDialog("Import this backup?", isPresented: $confirmingImport) {
+            Button("Replace & Import", role: .destructive) {
+                if let data = pendingImport, state.importBackup(from: data) {
+                    message = "Backup imported."
+                } else {
+                    message = "Could not import that file."
+                }
+                pendingImport = nil
+            }
+            Button("Cancel", role: .cancel) { pendingImport = nil }
+        } message: {
+            Text("This replaces your current world and statistics with the backup's. Consider exporting first.")
+        }
+    }
+
+    private func exportBackup() {
+        guard let data = state.exportBackupData() else { message = "Nothing to export."; return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        let stamp = ISO8601DateFormatter().string(from: Date()).prefix(10)
+        panel.nameFieldStringValue = "pomolego-backup-\(stamp).json"
+        if panel.runModal() == .OK, let url = panel.url {
+            try? data.write(to: url)
+            message = "Backup exported."
+        }
+    }
+
+    private func importBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) {
+            pendingImport = data
+            confirmingImport = true
+        }
     }
 }
 

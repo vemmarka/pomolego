@@ -323,6 +323,27 @@ final class AppState: ObservableObject {
         store.saveWorld(worldFile)
     }
 
+    // MARK: - Backup
+
+    func exportBackupData() -> Data? { store.exportData() }
+
+    /// Restore a backup, then refresh published state from storage. Returns
+    /// true on success.
+    @discardableResult
+    func importBackup(from data: Data) -> Bool {
+        guard store.importData(data) else { return false }
+        worldFile = store.loadWorld()
+        sessions = store.loadSessions()
+        selectedDesignID = AppSettings.selectedDesignID
+        focusMinutes = min(180, max(5, AppSettings.focusMinutes))
+        customDurations = AppSettings.customDurations
+        targetCell = nil
+        editMode = .none
+        unlockAnnouncement = nil
+        onStatusUpdate?()
+        return true
+    }
+
     /// Rename a saved field in the album (empty name clears it).
     func renameArchivedField(archivedAt: Date, to name: String) {
         guard let index = worldFile.archived.firstIndex(where: { $0.archivedAt == archivedAt }) else { return }

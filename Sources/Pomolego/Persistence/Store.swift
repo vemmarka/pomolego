@@ -93,4 +93,66 @@ final class Store {
             try? FileManager.default.removeItem(at: runningURL)
         }
     }
+
+    // MARK: - Backup (export / import)
+
+    /// Settings keys safe to round-trip in a backup. Shared with the web
+    /// version so a backup made there applies the matching keys here.
+    private static let backupSettingsKeys = [
+        AppSettings.focusMinutesKey, AppSettings.shortBreakMinutesKey,
+        AppSettings.longBreakMinutesKey, AppSettings.sessionsBeforeLongBreakKey,
+        AppSettings.idleResetMinutesKey, AppSettings.autoStartBreaksKey,
+        AppSettings.autoStartNextFocusKey, AppSettings.animationPositionKey,
+        AppSettings.menuBarShowsCountdownKey, AppSettings.crackedBlockOnAbandonKey,
+        AppSettings.selectedDesignIDKey, AppSettings.customDurationsKey,
+    ]
+
+    /// A full backup as pretty-printed JSON, matching the web envelope:
+    /// { app, version, exportedAt, world, sessions, settings }.
+    func exportData() -> Data? {
+        func jsonObject<T: Encodable>(_ value: T) -> Any? {
+            guard let data = try? encoder.encode(value) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data)
+        }
+        var settings: [String: Any] = [:]
+        for key in Self.backupSettingsKeys {
+            if let v = UserDefaults.standard.object(forKey: key) { settings[key] = v }
+        }
+        let payload: [String: Any] = [
+            "app": "pomolego",
+            "version": 1,
+            "exportedAt": ISO8601DateFormatter().string(from: Date()),
+            "world": jsonObject(loadWorld()) ?? [:],
+            "sessions": jsonObject(loadSessions()) ?? [],
+            "settings": settings,
+        ]
+        return try? JSONSerialization.data(withJSONObject: payload,
+                                           options: [.prettyPrinted, .sortedKeys])
+    }
+
+    /// Restore a backup. Returns true on success. World and sessions are
+    /// always restored when valid; known settings keys apply best-effort.
+    @discardableResult
+    func importData(_ data: Data) -> Bool {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              root["app"] as? String == "pomolego" else { return false }
+
+        if let worldObj = root["world"],
+           let worldData = try? JSONSerialization.data(withJSONObject: worldObj),
+           let world = try? decoder.decode(WorldFile.self, from: worldData) {
+            saveWorld(world)
+        }
+        if let sessionsObj = root["sessions"],
+           let sessionsData = try? JSONSerialization.data(withJSONObject: sessionsObj),
+           let sessions = try? decoder.decode([SessionRecord].self, from: sessionsData) {
+            saveSessions(sessions)
+        }
+        if let settings = root["settings"] as? [String: Any] {
+            for key in Self.backupSettingsKeys where settings[key] != nil {
+                UserDefaults.standard.set(settings[key], forKey: key)
+            }
+        }
+        saveRunningState(nil) // a restored snapshot has no live timer
+        return true
+    }
 }

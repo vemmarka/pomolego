@@ -61,4 +61,30 @@ export const Store = {
     return { ...DEFAULT_SETTINGS, ...load(KEYS.settings, {}) };
   },
   saveSettings(settings) { save(KEYS.settings, settings); },
+
+  // A full backup snapshot for export/import (everything except the
+  // transient running-timer state).
+  exportData() {
+    return {
+      app: 'pomolego',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      world: this.loadWorldFile(),
+      sessions: this.loadSessions(),
+      settings: load(KEYS.settings, {}),
+    };
+  },
+
+  // Restore a backup. Returns true on success. Validates shape loosely so a
+  // stray file can't corrupt storage.
+  importData(data) {
+    if (!data || data.app !== 'pomolego' || typeof data !== 'object') return false;
+    if (data.world && data.world.current && Array.isArray(data.world.current.blocks)) {
+      save(KEYS.world, data.world);
+    }
+    if (Array.isArray(data.sessions)) save(KEYS.sessions, data.sessions);
+    if (data.settings && typeof data.settings === 'object') save(KEYS.settings, data.settings);
+    localStorage.removeItem(KEYS.running); // a restored snapshot has no live timer
+    return true;
+  },
 };
